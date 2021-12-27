@@ -49,13 +49,13 @@ def my_handler(type, value, tb):
 logger = logging.getLogger(__name__)
 
 ##CONFIGSTART
-STEAM_USER = "taw_arma3_bat2"
+STEAM_USER = "slimysnakeuk"
 
 SERVER_ID = "233780"
 WORKSHOP_ID = "107410"
 INSTALL_DIR = config["INSTALL_DIR"]  # "C:/HBTurpinTestArea/Mods/"
 CHECK_DIR = config["CHECK_DIR"]  # "C:/HBTurpinTestArea/Mods/steamapps/workshop/content/107410"
-CONFIG_FOLDER = config["CONFIG_FOLDER"]  # "C:/HBTurpinTestArea/Presets/" #change this
+CONFIG_DIR = config["CONFIG_DIR"]  # "C:/HBTurpinTestArea/Presets/" #change this
 ARMA_DIR = config["ARMA_DIR"]  # "C:/HBTurpinTestArea/Arma" #change this
 STEAMCMD_PATH = config["STEAMCMD_PATH"]  # "C:/HBTurpinTestArea/Arma" #change this
 
@@ -163,22 +163,24 @@ def update_mods(MODS):
         Path('.update').touch()
         somethingUpdated = True
 
+
+        # Download the mod via steamcmd.
+        log("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
+        steam_cmd_params = " +force_install_dir {}".format(INSTALL_DIR)
+        steam_cmd_params += " +login {}".format(STEAM_USER)
+        steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
+        steam_cmd_params += " +quit"
+        call_steamcmd(steam_cmd_params)
+
+
         # Send Discord which mods have beeen updated.
-        modEmbed = DiscordEmbed(title='[INFO] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]),
-                                description='https://steamcommunity.com/sharedfiles/filedetails/?id={}'.format(
-                                    mod["ID"]), color='2121cc')
+        modEmbed = DiscordEmbed(title='[INFO] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='https://steamcommunity.com/sharedfiles/filedetails/?id={}'.format(mod["ID"]), color='2121cc')
         modEmbed.add_embed_field(name='Previous Version', value=current_version)
         modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])))
         modEmbed.set_footer(text='')
         modHook.add_embed(modEmbed)
 
-        # Download the mod via steamcmd.
-        log("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
-        steam_cmd_params = " +login {}".format(STEAM_USER)
-        steam_cmd_params += " +force_install_dir {}".format(INSTALL_DIR)
-        steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
-        steam_cmd_params += " +quit"
-        call_steamcmd(steam_cmd_params)
+
 
     if somethingUpdated:  # Only execute webhook if a mod was actually updated.
         response = modHook.execute()
@@ -202,8 +204,8 @@ def symlink_mod(id: str, modpack: str, _modPath:str= None):
     if os.path.exists(_destPath) and os.path.isdir(_destPath):
         shutil.rmtree(_destPath)
     symlink_from_to(_modPath, _destPath)
-def symlink_from_to(_modPath, _destPath):
 
+def symlink_from_to(_modPath, _destPath):
     _addonsDir = os.path.join(_modPath, "Addons")
     os.makedirs(os.path.join(_destPath, "Addons"), exist_ok=True)
     for root, dirs, files in os.walk(_modPath):
@@ -293,165 +295,28 @@ def clean_logs():
 
     pass
 
-def run_command(command):
-    """UNTESTED
-    Some code I found online to read the output from a subprocess live,
-    planning to use this to find the location of each DLC and then copy/link the files to the installation dir.
-    :param command:
-    :return:
-    """
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll()  != 0:
-            break
-        if output:
-            print(output.strip().decode("utf-8"))
-    rc = process.poll()
-    return rc
-def run_command2(command):
-    _ret = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    logger.info(_ret.stdout)
-    logger.error(_ret.stderr)
-    return _ret
-def run_command3(command, data={"depot":"123"}):
-    from subprocess import Popen, PIPE, STDOUT
-
-    proc = Popen(shlex.split(command),
-                 bufsize=1, stdout=PIPE, stderr=STDOUT, close_fds=True)
-    for line in iter(proc.stdout.readline, b''):
-        line = line.decode("utf-8")
-        print(line[:-2])
-        # if line.startswith("Depot download complete"):
-        #     print("key line found")
-        #     print(depot_path.format(app=SERVER_ID, depot =data["depot"]))
-        #     assert line.find(depot_path.format(app=SERVER_ID, depot =data["depot"]).replace("/","\\")) != -1
-
-    proc.stdout.close()
-    proc.wait()
-
-
-
-def update_dlc(name, data):
-    """
-    +download_depot is still very naive, always downloading all the data regardless of whether it is required.
-    :param name: DLC name
-    :param data: depot entry
-    :return:
-    """
-    logger.info("Updating DLC: {}".format(name))
-    command = "{} {}".format("steamcmd",
-                             "+@NoPromptForPassword 1 +login {}  +download_depot  {}  {}  {} -validate +quit".format(
-                                 "taw_arma3_bat2",  SERVER_ID, data["depot"], data["manifest"]))
-
-    logger.info(command)
-    run_command3(command, data=data)
-    # run_command("{} {}".format("steamcmd",
-    #                            "+@NoPromptForPassword 1 +login {} +quit  +download_depot  {}  {}  {} +quit".format(
-    #                                "taw_arma3_bat2",  SERVER_ID, v["depot"], v["manifest"])))
-    logger.debug(depot_path.format(app=SERVER_ID, depot =data["depot"]))
-
-
-# run_command("{} {}".format("steamcmd",
-#                          "+@NoPromptForPassword 1 +login {} +force_install_dir {}  +download_depot  {}  {}  {} +quit".format(
-#                              "taw_arma3_bat2", INSTALL_DIR, SERVER_ID, "233790", "673702058420372856")))
-
-# idfk how to json/clean up text file easily. pls help
-# idk if this is even the best method for checking for updates, this seems the most logical to me though.
-# os.system(
-#     "steamcmd +login anonymous +app_info_update 1 +app_info_print \"233780\" +app_info_print \"233780\" +quit > version.txt")
-
-# # get the json output from text file, there is some crappy steamCMD stuff left in it.
-
-
 import hashlib
 from _hashlib import HASH as Hash
 from pathlib import Path
 from typing import Union
 
-
-def md5_update_from_file(filename: Union[str, Path], hash: Hash) -> Hash:
-    assert Path(filename).is_file()
-    with open(str(filename), "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash.update(chunk)
-    return hash
-
-
-def md5_file(filename: Union[str, Path]) -> str:
-    return str(md5_update_from_file(filename, hashlib.md5()).hexdigest())
-
-
-def md5_update_from_dir(directory: Union[str, Path], hash: Hash) -> Hash:
-    assert Path(directory).is_dir()
-    for path in sorted(Path(directory).iterdir(), key=lambda p: str(p).lower()):
-        hash.update(path.name.encode())
-        if path.is_file():
-            hash = md5_update_from_file(path, hash)
-        elif path.is_dir():
-            hash = md5_update_from_dir(path, hash)
-    return hash
-
-
-def md5_dir(directory: Union[str, Path]) -> str:
-    return str(md5_update_from_dir(directory, hashlib.md5()).hexdigest())
-
-
-
-
-def check_DLC_update() -> bool:
-    steamDBUrl = "https://steamdb.info/depot/{0}/"
-    _ret = False
-    with open("depots.json", "r") as depot_file:
-        DEPOTS = json.load(depot_file)
-
-    for name, dlc in DEPOTS.items():
-        logger.info(f"checking {name}")
-        _pth = depot_path.format(app=SERVER_ID, depot=dlc["depot"])
-        _newHash = md5_dir(_pth)
-        # print(_newHash)
-        if _newHash != dlc["hash"]:
-
-            _ret = True
-            dlc["hash"] = _newHash
-    with open("depots.json", "w") as depot_file:
-        json.dump(DEPOTS, depot_file)
-    if _ret: Path('.update').touch()
-    return _ret
-
-
-
-
-
-
-def update_all_depots():
-    with open("depots.json", "r") as depot_file:
-        DEPOTS = json.load(depot_file)
-    for k, v in DEPOTS.items():  # for each id we are following
-        pass
-        update_dlc(k, v)
-        
-        
 if __name__ == "__main__":
     config_logger()
     sys.excepthook = my_handler
 
-    # DLCs_updated = check_DLC_update()
-    # print(DLCs_updated)
     if not os.path.isfile(".running"):
         Path('.running').touch()
         clean_logs()
-        update_all_depots()
-        DLCs_updated = check_DLC_update()
-        logger.debug(f"DLCS Require update {DLCs_updated}")
-
-        for file in os.listdir(CONFIG_FOLDER):
+        
+        for file in os.listdir(CONFIG_DIR):
             if file.endswith(".html"):
                 _name = os.path.splitext(file)[0]
-                logger.info(os.path.join(CONFIG_FOLDER, file))
-                mods = loadMods(os.path.join(CONFIG_FOLDER, file))
+                logger.info(os.path.join(CONFIG_DIR, file))
+                mods = loadMods(os.path.join(CONFIG_DIR, file))
                 update_mods(mods)
+
         players = get_online_players()
+
         if players and os.path.isfile(".update") and not os.path.isfile(".notified"):
             Path('.notified').touch()
             logger.info("Players are online, could not update at this time.")
@@ -459,30 +324,23 @@ if __name__ == "__main__":
 
         if os.path.isfile(".update") and not players:
             try:
-
                 win32serviceutil.StopService("arma-server-web-admin")
             except Exception as e:
                 if e.strerror== 'The specified service does not exist as an installed service.':
                     logger.error("The service could not be found.")
                 else: raise e
             notify_updating_server()
-            for file in os.listdir(CONFIG_FOLDER):
+            for file in os.listdir(CONFIG_DIR):
                 if file.endswith(".html"):
                     _name = os.path.splitext(file)[0]
-                    logger.info(os.path.join(CONFIG_FOLDER, file))
+                    logger.info(os.path.join(CONFIG_DIR, file))
                     clean_mods(_name)
-                    mods = loadMods(os.path.join(CONFIG_FOLDER, file))
+                    mods = loadMods(os.path.join(CONFIG_DIR, file))
                     for m in mods:
                         symlink_mod(m["ID"], _name)
                         modify_mod_and_meta(m["ID"], _name, m["name"])
 
-            with open("depots.json", "r") as depot_file:
-                DEPOTS = json.load(depot_file)
-
-            for name, dlc in DEPOTS.items():
-                symlink_mod(dlc["key"], "DLC", _modPath=depot_path.format(app=SERVER_ID, depot=dlc["depot"]))
             try:
-
                 win32serviceutil.StartService("arma-server-web-admin")
             except Exception as e:
                 if e.strerror == 'The specified service does not exist as an installed service.':

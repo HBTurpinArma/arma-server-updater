@@ -1,0 +1,11 @@
+
+
+#No needs to save logs or saved mods/dlcs.
+logs/*
+staging/*
+
+#Tags
+.notified
+.running
+.update
+.env
