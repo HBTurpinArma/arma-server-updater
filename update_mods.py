@@ -33,7 +33,6 @@ from dotenv import dotenv_values
 
 config = dotenv_values(".env")
 
-
 def my_handler(type, value, tb):
     for line in traceback.TracebackException(type, value, tb).format(chain=True):
         logging.exception(line)
@@ -41,8 +40,6 @@ def my_handler(type, value, tb):
     if not value =="Script appears to be running already. If this is incorrect please remove .running file.":
         os.remove(".running")
     sys.__excepthook__(type, value, tb)  # calls default excepthook
-
-
 
 # Install exception handler
 
@@ -125,7 +122,7 @@ def get_workshop_version(mod_id):
 
 def get_current_version(mod_id, path):
     if os.path.isdir("{}/{}".format(path, mod_id)):
-        return datetime.fromtimestamp(os.path.getctime("{}/{}/meta.cpp".format(path, mod_id)))
+        return datetime.fromtimestamp(os.path.getmtime("{}/{}/meta.cpp".format(path, mod_id)))
     return datetime(1, 1, 1, 0, 0)
 
 
@@ -144,7 +141,7 @@ def is_updated(mod_id, path):
 
 def update_mods(MODS):
     modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-
+    mods_to_download = []
     somethingUpdated = False
     for mod in MODS:
         logger.info("\n")
@@ -163,24 +160,24 @@ def update_mods(MODS):
         Path('.update').touch()
         somethingUpdated = True
 
+        mods_to_download.append(mod)
 
-        # Download the mod via steamcmd.
-        log("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
-        steam_cmd_params = " +force_install_dir {}".format(INSTALL_DIR)
-        steam_cmd_params += " +login {}".format(STEAM_USER)
-        steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
-        steam_cmd_params += " +quit"
-        call_steamcmd(steam_cmd_params)
-
-
-        # Send Discord which mods have beeen updated.
-        modEmbed = DiscordEmbed(title='[INFO] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='https://steamcommunity.com/sharedfiles/filedetails/?id={}'.format(mod["ID"]), color='2121cc')
+        # Send Discord which mods are being updated.
+        modEmbed = DiscordEmbed(title='[INFO] @{} ({}) is being updated.'.format(mod["name"], mod["ID"]), description='https://steamcommunity.com/sharedfiles/filedetails/?id={}'.format(mod["ID"]), color='2121cc')
         modEmbed.add_embed_field(name='Previous Version', value=current_version)
         modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])))
         modEmbed.set_footer(text='')
         modHook.add_embed(modEmbed)
 
-
+    # Download the mod via steamcmd.
+    if mods_to_download:
+        steam_cmd_params = " +force_install_dir {}".format(INSTALL_DIR)
+        steam_cmd_params += " +login {}".format(STEAM_USER)
+        for mod in mods_to_download:
+            log("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
+            steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
+        steam_cmd_params += " +quit"
+        call_steamcmd(steam_cmd_params)
 
     if somethingUpdated:  # Only execute webhook if a mod was actually updated.
         response = modHook.execute()
@@ -206,26 +203,32 @@ def symlink_mod(id: str, modpack: str, _modPath:str= None):
     symlink_from_to(_modPath, _destPath)
 
 def symlink_from_to(_modPath, _destPath):
-    _addonsDir = os.path.join(_modPath, "Addons")
-    os.makedirs(os.path.join(_destPath, "Addons"), exist_ok=True)
+    #_addonsDir = os.path.join(_modPath, "addons")
+    os.makedirs(os.path.join(_destPath, "addons"), exist_ok=True)
+    #_keysDir = os.path.join(_modPath, "keys")
+    os.makedirs(os.path.join(_destPath, "keys"), exist_ok=True)
     for root, dirs, files in os.walk(_modPath):
         for name in files:
 
-            if name.endswith(".dll") or name.endswith(".so"):
+            if name.endswith(".dll") or name.endswith(".so") or name.endswith(".cpp"):
+                logger.info(os.path.join(_destPath, name))
                 # print(os.path.join(root, name),os.path.join(_destPath, name))
                 # logger.info(os.path.join(root, name))
-                logger.info(os.path.join(_destPath, "Addons", name))
+                logger.info(os.path.join(_destPath, "addons", name))
                 os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
             elif name.endswith(".bikey"):
+                logger.info(os.path.join(_destPath, "keys", name))
+                os.symlink(os.path.join(root, name), os.path.join(_destPath, "keys", name))
                 try:
-                    os.symlink(os.path.join(root, name), os.path.join(ARMA_DIR, "keys", name))
+                    #os.symlink(os.path.join(root, name), os.path.join(ARMA_DIR, "keys", name))
+                    shutil.copy(os.path.join(root, name), os.path.join(ARMA_DIR, "keys", name))
                 except FileExistsError:
                     pass
             elif name.endswith(".pbo") or name.endswith(".ebo") or name.endswith(".bisign"):
                 # print(os.path.join(root, name), os.path.join(_destPath, name))
                 # logger.info(os.path.join(root, name))
-                logger.info(os.path.join(_destPath, "Addons", name))
-                os.symlink(os.path.join(root, name), os.path.join(_destPath, "Addons", name))
+                logger.info(os.path.join(_destPath, "addons", name))
+                os.symlink(os.path.join(root, name), os.path.join(_destPath, "addons", name))
             else:
                 continue
             logger.info("Processed {}".format(name))
@@ -240,8 +243,8 @@ def symlink_from_to(_modPath, _destPath):
 
 def modify_mod_and_meta(id: str, modpack: str, name: str):
     _modPath = os.path.join(CHECK_DIR, id)
-    _destPath = os.path.join(ARMA_DIR, modpack, id)
-    _addonsDir = os.path.join(_modPath, "Addons")
+    _destPath = os.path.join(ARMA_DIR, modpack, "@"+id)
+    _addonsDir = os.path.join(_modPath, "addons")
     for root, dirs, files in os.walk(_modPath):
         for name in files:
             logger.info(name)
@@ -257,8 +260,7 @@ def modify_mod_and_meta(id: str, modpack: str, name: str):
 
 def notify_players_online():
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    playerEmbed = DiscordEmbed(title='[ERROR] Could not shutdown and update servers...',
-                               description='The following users are online.', color='dd2121')
+    playerEmbed = DiscordEmbed(title='[ERROR] Could not shutdown and update servers...', description='The following users are online.', color='dd2121')
     for k, v in players.items():
         p = ""
         for player in v:
@@ -271,8 +273,7 @@ def notify_players_online():
 
 def notify_updating_server():
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    playerEmbed = DiscordEmbed(title='[INFO] Attempting to update the servers...',
-                               description='The servers are empty and shutting down.', color='21dd21')
+    playerEmbed = DiscordEmbed(title='[INFO] Attempting to update the servers...', description='The servers are empty and shutting down.', color='21dd21')
     for k, v in players.items():
         p = ""
         for player in v:
@@ -292,7 +293,6 @@ def clean_logs():
                 if (datetime.now() - _dts).total_seconds() > 60 * 60 * 24:
                     logger.info("removing log file: {}".format(name))
                     os.remove(os.path.join(root, name))
-
     pass
 
 import hashlib
@@ -304,10 +304,12 @@ if __name__ == "__main__":
     config_logger()
     sys.excepthook = my_handler
 
+    #Only one instance of the updater can run at a time, stop it running again mid-update.
     if not os.path.isfile(".running"):
         Path('.running').touch()
         clean_logs()
         
+        #For every preset html load in the mods that we need monitor updates on.
         for file in os.listdir(CONFIG_DIR):
             if file.endswith(".html"):
                 _name = os.path.splitext(file)[0]
@@ -317,11 +319,13 @@ if __name__ == "__main__":
 
         players = get_online_players()
 
+        #Players online, only ever notify once that it can't update as this runs every 5 minutes.
         if players and os.path.isfile(".update") and not os.path.isfile(".notified"):
             Path('.notified').touch()
             logger.info("Players are online, could not update at this time.")
             notify_players_online()
 
+        #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
         if os.path.isfile(".update") and not players:
             try:
                 win32serviceutil.StopService("arma-server-web-admin")
@@ -340,11 +344,14 @@ if __name__ == "__main__":
                         symlink_mod(m["ID"], _name)
                         modify_mod_and_meta(m["ID"], _name, m["name"])
 
+            #Once done, restart the service and reset the updater ready to check for new updates.
             try:
                 win32serviceutil.StartService("arma-server-web-admin")
             except Exception as e:
                 if e.strerror == 'The specified service does not exist as an installed service.':
                     logger.error("The service could not be found.")
+                elif e.strerror == "The service has not been started.":
+                    logger.error("The service has already been stopped.")
                 else: raise e
             try:
                 os.remove(".notified")
