@@ -170,11 +170,12 @@ def update_mods(MODS):
         modHook.add_embed(modEmbed)
 
     # Download the mod via steamcmd.
+    log("Attempting to download the following mods with steamcmd:")
     if mods_to_download:
         steam_cmd_params = " +force_install_dir {}".format(INSTALL_DIR)
         steam_cmd_params += " +login {}".format(STEAM_USER)
         for mod in mods_to_download:
-            log("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
+            logger.info("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
             steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
         steam_cmd_params += " +quit"
         call_steamcmd(steam_cmd_params)
@@ -197,7 +198,7 @@ def clean_mods(modset):
 def symlink_mod(id: str, modpack: str, _modPath:str= None):
     if not _modPath:
         _modPath = os.path.join(CHECK_DIR, id)
-    _destPath = os.path.join(ARMA_DIR, modpack, id)
+    _destPath = os.path.join(ARMA_DIR, modpack, "@"+id)
     if os.path.exists(_destPath) and os.path.isdir(_destPath):
         shutil.rmtree(_destPath)
     symlink_from_to(_modPath, _destPath)
@@ -330,7 +331,7 @@ if __name__ == "__main__":
             try:
                 win32serviceutil.StopService("arma-server-web-admin")
             except Exception as e:
-                if e.strerror== 'The specified service does not exist as an installed service.':
+                if e.strerror== 'The specified service does not exist as an installed service.' or e.strerror=="The service has not been started.":
                     logger.error("The service could not be found.")
                 else: raise e
             notify_updating_server()
