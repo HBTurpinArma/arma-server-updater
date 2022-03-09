@@ -134,6 +134,9 @@ def is_updated(mod_id, path):
     logger.info(" Checking {}/{}".format(path, mod_id))
     logger.info("   Current Version Found: {}".format(current_version))
 
+    if not workshop_version: #Workshop version can't be found - likely is removed/hidden. No need to keep updating so return true.
+        return True
+
     if current_version:
         return (current_version > workshop_version)  # do we have the most recent file?
     return False
@@ -210,15 +213,14 @@ def symlink_from_to(_modPath, _destPath):
     os.makedirs(os.path.join(_destPath, "keys"), exist_ok=True)
     for root, dirs, files in os.walk(_modPath):
         for name in files:
-
-            if name.endswith(".dll") or name.endswith(".so") or name.endswith(".cpp"):
-                logger.info(os.path.join(_destPath, name))
-                # print(os.path.join(root, name),os.path.join(_destPath, name))
-                # logger.info(os.path.join(root, name))
-                logger.info(os.path.join(_destPath, "addons", name))
-                os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
+            if name.endswith(".dll") or name.endswith(".so"):
+                #logger.info(os.path.join(_destPath, "addons", name))
+                try: 
+                    os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
+                except FileExistsError:
+                    pass
             elif name.endswith(".bikey"):
-                logger.info(os.path.join(_destPath, "keys", name))
+                #logger.info(os.path.join(_destPath, "keys", name))
                 os.symlink(os.path.join(root, name), os.path.join(_destPath, "keys", name))
                 try:
                     #os.symlink(os.path.join(root, name), os.path.join(ARMA_DIR, "keys", name))
@@ -226,20 +228,14 @@ def symlink_from_to(_modPath, _destPath):
                 except FileExistsError:
                     pass
             elif name.endswith(".pbo") or name.endswith(".ebo") or name.endswith(".bisign"):
-                # print(os.path.join(root, name), os.path.join(_destPath, name))
-                # logger.info(os.path.join(root, name))
-                logger.info(os.path.join(_destPath, "addons", name))
-                os.symlink(os.path.join(root, name), os.path.join(_destPath, "addons", name))
+                #logger.info(os.path.join(_destPath, "addons", name))
+                try:
+                    os.symlink(os.path.join(root, name), os.path.join(_destPath, "addons", name))
+                except FileExistsError:
+                    pass
             else:
                 continue
-            logger.info("Processed {}".format(name))
-    # for root, dirs, files in os.walk(_addonsDir):
-    #     for name in files:
-    #         if name.endswith(".pbo") or name.endswith(".bisign"):
-    #             print(os.path.join(root, name), os.path.join(_destPath, name))
-    #             logger.info(os.path.join(root, name))
-    #             logger.info(os.path.join(_destPath, "Addons", name))
-    #             os.symlink(os.path.join(root, name), os.path.join(_destPath, "Addons", name))
+            logger.info("Processed {} {}".format(_modPath, name))
 
 
 def modify_mod_and_meta(id: str, modpack: str, name: str):
@@ -248,7 +244,6 @@ def modify_mod_and_meta(id: str, modpack: str, name: str):
     _addonsDir = os.path.join(_modPath, "addons")
     for root, dirs, files in os.walk(_modPath):
         for name in files:
-            logger.info(name)
             if name == "mod.cpp" or name == "meta.cpp":
                 with open(os.path.join(root, name), "r") as file:
                     _data = file.readlines()
@@ -257,6 +252,7 @@ def modify_mod_and_meta(id: str, modpack: str, name: str):
                         _data[i] = f'name="{id}";\n'
                 with open(os.path.join(_destPath, name), "w") as file:
                     file.writelines(_data)
+                logger.info("Processed {} {}".format(_modPath, name))
 
 
 def notify_players_online():
@@ -275,12 +271,6 @@ def notify_players_online():
 def notify_updating_server():
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     playerEmbed = DiscordEmbed(title='[INFO] Attempting to update the servers...', description='The servers are empty and shutting down.', color='21dd21')
-    for k, v in players.items():
-        p = ""
-        for player in v:
-            name = re.findall("(?:name=[\'\"])([\w\[\]\s]+)(?:')", str(player))[0]
-            p += name + "\n"
-        playerEmbed.add_embed_field(name=k, value=p)
     playerHook.add_embed(playerEmbed)
     response = playerHook.execute()
 
@@ -338,7 +328,7 @@ if __name__ == "__main__":
             for file in os.listdir(CONFIG_DIR):
                 if file.endswith(".html"):
                     _name = os.path.splitext(file)[0]
-                    logger.info(os.path.join(CONFIG_DIR, file))
+                    log("Processing: {}".format(os.path.join(CONFIG_DIR, file)))
                     clean_mods(_name)
                     mods = loadMods(os.path.join(CONFIG_DIR, file))
                     for m in mods:
