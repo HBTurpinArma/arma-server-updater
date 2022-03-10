@@ -222,11 +222,6 @@ def symlink_from_to(_modPath, _destPath):
             elif name.endswith(".bikey"):
                 #logger.info(os.path.join(_destPath, "keys", name))
                 os.symlink(os.path.join(root, name), os.path.join(_destPath, "keys", name))
-                try:
-                    #os.symlink(os.path.join(root, name), os.path.join(ARMA_DIR, "keys", name))
-                    shutil.copy(os.path.join(root, name), os.path.join(ARMA_DIR, "keys", name))
-                except FileExistsError:
-                    pass
             elif name.endswith(".pbo") or name.endswith(".ebo") or name.endswith(".bisign"):
                 #logger.info(os.path.join(_destPath, "addons", name))
                 try:
