@@ -173,8 +173,9 @@ def update_mods(MODS):
         modHook.add_embed(modEmbed)
 
     # Download the mod via steamcmd.
-    log("Attempting to download the following mods with steamcmd:")
-    if mods_to_download:
+    
+    if somethingUpdated and mods_to_download:
+        log("Attempting to download the following mods with steamcmd:")
         steam_cmd_params = " +force_install_dir {}".format(INSTALL_DIR)
         steam_cmd_params += " +login {}".format(STEAM_USER)
         for mod in mods_to_download:
@@ -186,6 +187,8 @@ def update_mods(MODS):
     if somethingUpdated:  # Only execute webhook if a mod was actually updated.
         response = modHook.execute()
         log("The server is pending to be updated, attempting to update......")
+    else:
+        log("Mods are up to date, and the server does not need to be restarted.")
 
 
 # SYMLINK STUFF
