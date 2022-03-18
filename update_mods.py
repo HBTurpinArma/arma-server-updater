@@ -248,7 +248,8 @@ def modify_mod_and_meta(id: str, modpack: str, name: str):
                 with open(os.path.join(_destPath, name), "w") as file:
                     file.writelines(_data)
                 logger.info("Processed {} {}".format(_modPath, name))
-
+            else:
+                os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
 
 def notify_players_online():
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
