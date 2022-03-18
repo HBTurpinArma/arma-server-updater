@@ -118,7 +118,7 @@ def is_updated(mod_id, path):
     logger.info(" Checking https://steamcommunity.com/sharedfiles/filedetails/changelog/{}".format(mod_id))
     logger.info("   Latest Version Found: {}".format(workshop_version))
     current_version = get_current_version(mod_id, path)
-    logger.info(" Checking {}/{}".format(path, mod_id))
+    logger.info(" Checking {}{}".format(path, mod_id))
     logger.info("   Current Version Found: {}".format(current_version))
 
     if not workshop_version: #Workshop version can't be found - likely is removed/hidden. No need to keep updating so return true.
@@ -173,9 +173,7 @@ def update_mods(MODS):
 
     if somethingUpdated:  # Only execute webhook if a mod was actually updated.
         response = modHook.execute()
-        log("The server is pending to be updated, attempting to update......")
-    else:
-        log("Mods are up to date, and the server does not need to be restarted.")
+        
 
 
 # SYMLINK STUFF
@@ -290,17 +288,23 @@ if __name__ == "__main__":
         for file in os.listdir(CONFIG_DIR):
             if file.endswith(".html"):
                 _name = os.path.splitext(file)[0]
-                logger.info(os.path.join(CONFIG_DIR, file))
+                log("Reading Mod Preset ("+file+")")
                 mods = loadMods(os.path.join(CONFIG_DIR, file))
                 update_mods(mods)
 
-        players = get_online_players()
+        #Logging and notify
+        if os.path.isfile(".update"):
+            log("The server is pending to be updated, attempting to update......")
+            players = get_online_players()
+            #Players online, only ever notify once that it can't update as this runs every 5 minutes.
+            if players:
+                Path('.notified').touch()
+                logger.info("Players are online, could not update at this time.")
+                if not os.path.isfile(".notified"):
+                    notify_players_online()
+        else: 
+            log("Mods are up to date, and the server does not need to be restarted.")
 
-        #Players online, only ever notify once that it can't update as this runs every 5 minutes.
-        if players and os.path.isfile(".update") and not os.path.isfile(".notified"):
-            Path('.notified').touch()
-            logger.info("Players are online, could not update at this time.")
-            notify_players_online()
 
         #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
         if os.path.isfile(".update") and not players:
