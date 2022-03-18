@@ -2,33 +2,20 @@ import os
 import os.path
 import re
 import shutil
-import subprocess
-import time
-import shlex
-
-import bs4
-import pywintypes
-
-import process_html
-from process_html import loadMods
+import sys
+import logging
+import sys
+import traceback
+import win32serviceutil
 import json
-import ast
-
 from datetime import datetime
 from urllib import request
 from pprint import pprint
 from discord_webhook import DiscordWebhook, DiscordEmbed
 from pathlib import Path
-import os
-import sys
-
-import win32serviceutil
 import a2s
-import logging
-import logging
-import sys
-import traceback
-
+import process_html
+from process_html import loadMods
 from dotenv import dotenv_values
 
 config = dotenv_values(".env")
