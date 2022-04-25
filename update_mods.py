@@ -6,6 +6,7 @@ import sys
 import logging
 import sys
 import traceback
+from webbrowser import get
 import win32serviceutil
 import json
 from datetime import datetime
@@ -17,6 +18,11 @@ import a2s
 import process_html
 from process_html import loadMods
 from dotenv import dotenv_values
+import requests
+import hashlib
+from _hashlib import HASH as Hash
+from pathlib import Path
+from typing import Union
 
 config = dotenv_values(".env")
 
@@ -33,15 +39,18 @@ def my_handler(type, value, tb):
 logger = logging.getLogger(__name__)
 
 ##CONFIGSTART
-STEAM_USER = "slimysnakeuk"
-
 SERVER_ID = "233780"
 WORKSHOP_ID = "107410"
+
 INSTALL_DIR = config["INSTALL_DIR"]  # "C:/HBTurpinTestArea/Mods/"
 CHECK_DIR = config["CHECK_DIR"]  # "C:/HBTurpinTestArea/Mods/steamapps/workshop/content/107410"
 CONFIG_DIR = config["CONFIG_DIR"]  # "C:/HBTurpinTestArea/Presets/" #change this
 ARMA_DIR = config["ARMA_DIR"]  # "C:/HBTurpinTestArea/Arma" #change this
 STEAMCMD_PATH = config["STEAMCMD_PATH"]  # "C:/HBTurpinTestArea/Arma" #change this
+
+STEAM_LOGIN = config["STEAM_LOGIN"] #We want to use AM2 Steam Account in the future, just need an easier way to get 2FA sorted.
+PANEL_LOGIN = config["PANEL_LOGIN"]
+PANEL_PASS = config["PANEL_PASS"]
 
 DISCORD_WEBHOOK = config[
     "DISCORD_WEBHOOK"]  # 'https://discord.com/api/webhooks/909859742774611999/HcU7v8b0c5Ce9QKK9EGkAeDaVw7tp37ge5orFjWpxaNSdCid7ulABPxKDomWc13B11HO'
@@ -52,7 +61,7 @@ depot_path = f"{STEAMCMD_PATH}{depot_rel_path}"
 
 logger.info(config)
 
-
+##LOGGING STUFF
 def config_logger():
     _now = datetime.now().strftime("%Y%m%d-%H%M%S")
     logging.basicConfig(filename='Logs/log_{}.log'.format(_now), level=logging.DEBUG)
@@ -66,36 +75,28 @@ def config_logger():
     # add the handler to the root logger
     logging.getLogger('').addHandler(console)
 
-
-def get_online_players():
-    players = {}
-
-    serversJSON = json.load(open(SERVERS_JSON_FILE, "r"))
-    for server in serversJSON:
-        # logger.info(server["title"])
-        try:
-            _players = (a2s.players(("127.0.0.1", int(server["port"]) + 1,)))
-            if len(_players) > 0:
-                # players += _players
-                # logger.info(f"there are players on server: {server['title']}")
-                players[server['title']] = _players
-        except Exception:
-            # logger.info("Server was not found, it is probably not on")
-            pass
-    return players
-
-
 def log(msg):
     logger.info("")
     logger.info("{{0:=<{}}}".format(len(msg)).format(""))
     logger.info(msg)
     logger.info("{{0:=<{}}}".format(len(msg)).format(""))
 
+def clean_logs():
+    for root, dirs, files in os.walk(os.path.join(os.getcwd(), "Logs")):
+        for name in files:
+            logger.info(name)
+            if name.endswith(".log"):
+                _dts = datetime.strptime(os.path.splitext(name)[0][4:], "%Y%m%d-%H%M%S")
+                if (datetime.now() - _dts).total_seconds() > 60 * 60 * 24:
+                    logger.info("removing log file: {}".format(name))
+                    os.remove(os.path.join(root, name))
+    pass
 
+
+##MOD UPDATING
 def call_steamcmd(params):
     os.system("{} {}".format("steamcmd", params))
     # logger.info("{} {}".format("steamcmd", params))
-
 
 def get_workshop_version(mod_id):
     PATTERN = re.compile(r"workshopAnnouncement.*?<p id=\"(\d+)\">", re.DOTALL)
@@ -106,12 +107,10 @@ def get_workshop_version(mod_id):
     if match:
         return datetime.fromtimestamp(int(match.group(1)))
 
-
 def get_current_version(mod_id, path):
     if os.path.isdir("{}/{}".format(path, mod_id)):
         return datetime.fromtimestamp(os.path.getmtime("{}/{}/meta.cpp".format(path, mod_id)))
     return datetime(1, 1, 1, 0, 0)
-
 
 def is_updated(mod_id, path):
     workshop_version = get_workshop_version(mod_id)
@@ -128,12 +127,9 @@ def is_updated(mod_id, path):
         return (current_version > workshop_version)  # do we have the most recent file?
     return False
 
-
-def update_mods(MODS):
-    modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+def update_mods(preset, mods):
     mods_to_download = []
-    somethingUpdated = False
-    for mod in MODS:
+    for mod in mods:
         logger.info("\n")
         # Check if mod needs to be updated
         current_version = str(get_current_version(mod["ID"], CHECK_DIR))
@@ -147,33 +143,40 @@ def update_mods(MODS):
         else:
             logger.info("No file found, grabbing mod \"{}\" ({})".format(mod["name"], mod["ID"]))
 
-        Path('.update').touch()
-        somethingUpdated = True
 
         mods_to_download.append(mod)
 
-        # Send Discord which mods are being updated.
-        modEmbed = DiscordEmbed(title='[INFO] @{} ({}) is being updated.'.format(mod["name"], mod["ID"]), description='https://steamcommunity.com/sharedfiles/filedetails/?id={}'.format(mod["ID"]), color='2121cc')
-        modEmbed.add_embed_field(name='Previous Version', value=current_version)
-        modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])))
-        modEmbed.set_footer(text='')
-        modHook.add_embed(modEmbed)
+        #Add mods to the update file to be read everytime we need to attempt to restart servers
+        if not os.path.isfile(".update"):
+            Path('.update').touch()
+        with open('.update', 'a') as update_file:
+            update_file.writelines(mod["ID"]+"\n")
 
     # Download the mod via steamcmd.
-    
-    if somethingUpdated and mods_to_download:
+    if  mods_to_download:
         log("Attempting to download the following mods with steamcmd:")
         steam_cmd_params = " +force_install_dir {}".format(INSTALL_DIR)
-        steam_cmd_params += " +login {}".format(STEAM_USER)
+        steam_cmd_params += " +login {}".format(STEAM_LOGIN)
         for mod in mods_to_download:
             logger.info("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
             steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
         steam_cmd_params += " +quit"
         call_steamcmd(steam_cmd_params)
 
-    if somethingUpdated:  # Only execute webhook if a mod was actually updated.
-        response = modHook.execute()
-        
+
+    # Send Discord which mods are being updated.
+    modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+    for index, mod in enumerate(mods_to_download):
+        modEmbed = DiscordEmbed(title='[UPDATE] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='https://steamcommunity.com/sharedfiles/filedetails/?id={}'.format(mod["ID"]), color='2121cc')
+        modEmbed.add_embed_field(name='Previous Version', value=current_version)
+        modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])))
+        modEmbed.set_footer(text='Required by ' + preset)
+        modHook.add_embed(modEmbed)
+        if (index+1) % 10 == 0: #There is a limitation to webhook to being 10 max embeds, so we have to send multiple messages. I don't want to send a whole webhook per mod due to potential spam issues also.
+            response = modHook.execute()
+            modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+    response = modHook.execute()
+    
 
 
 # SYMLINK STUFF
@@ -184,7 +187,6 @@ def clean_mods(modset):
     elif os.path.exists(_path) and not os.path.isdir(_path):
         raise ValueError("Modpack path is not a directory cannot continue")
     os.mkdir(_path)
-
 
 def symlink_mod(id: str, modpack: str, _modPath:str= None):
     if not _modPath:
@@ -220,7 +222,6 @@ def symlink_from_to(_modPath, _destPath):
                 continue
             logger.info("Processed {} {}".format(_modPath, name))
 
-
 def modify_mod_and_meta(id: str, modpack: str, name: str):
     _modPath = os.path.join(CHECK_DIR, id)
     _destPath = os.path.join(ARMA_DIR, modpack, "@"+id)
@@ -239,7 +240,9 @@ def modify_mod_and_meta(id: str, modpack: str, name: str):
             else:
                 os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
 
-def notify_players_online():
+
+##ONLINE PLAYERS
+def notify_players_online(players):
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     playerEmbed = DiscordEmbed(title='[ERROR] Could not shutdown and update servers...', description='The following users are online.', color='dd2121')
     for k, v in players.items():
@@ -251,30 +254,84 @@ def notify_players_online():
     playerHook.add_embed(playerEmbed)
     response = playerHook.execute()
 
-
 def notify_updating_server():
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     playerEmbed = DiscordEmbed(title='[INFO] Attempting to update the servers...', description='The servers are empty and shutting down.', color='21dd21')
     playerHook.add_embed(playerEmbed)
     response = playerHook.execute()
 
+def get_online_players(servers):
+    players = {}
+    for server in servers:
+        try:
+            _players = (a2s.players(("127.0.0.1", int(server["port"]) + 1,)))
+            if len(_players) > 0:
+                logger.info(f"There are players on server: {server['title']}")
+                players[server['title']] = _players
+        except Exception:
+            pass
+    return players
 
-def clean_logs():
-    for root, dirs, files in os.walk(os.path.join(os.getcwd(), "Logs")):
-        for name in files:
-            logger.info(name)
-            if name.endswith(".log"):
-                _dts = datetime.strptime(os.path.splitext(name)[0][4:], "%Y%m%d-%H%M%S")
-                if (datetime.now() - _dts).total_seconds() > 60 * 60 * 24:
-                    logger.info("removing log file: {}".format(name))
-                    os.remove(os.path.join(root, name))
-    pass
 
-import hashlib
-from _hashlib import HASH as Hash
-from pathlib import Path
-from typing import Union
+##PENDING SERVERS
+def get_pending_mods():
+    mod_ids = []
+    with open(".update") as update:
+        mod_ids = update.read().splitlines() 
+    return mod_ids
 
+def get_pending_presets():
+    mod_ids = []
+    with open(".update") as update:
+        mod_ids = update.read().splitlines() 
+
+    if isinstance(mod_ids, str): 
+        mod_ids = [mod_ids]
+    presets = []
+    for preset in os.listdir(CONFIG_DIR):
+        if preset.endswith(".html"):
+            preset_mods = loadMods(os.path.join(CONFIG_DIR, preset))
+            preset_mods_ids = []
+            for preset_mod in preset_mods:
+                preset_mods_ids.append(preset_mod['ID'])
+
+            for mod_id in mod_ids:
+                if mod_id in preset_mods_ids:
+                    if preset not in presets:
+                        presets.append(preset)
+    return presets
+
+def get_pending_servers():
+    pending_presets = get_pending_presets()
+    pending_mod_ids = get_pending_mods()
+    print(get_pending_presets())
+    pending_servers = []
+    serversJSON = json.load(open(SERVERS_JSON_FILE, "r"))
+    for server in serversJSON:
+        for server_mod in server["mods"]: #mods_ids
+            if server_mod.split("\\")[-1] in pending_mod_ids:
+                if server not in pending_servers:
+                    pending_servers.append(server)
+        for server_mod in server["mods"]: #presets
+            if server_mod.split("\\")[0]+".html" in pending_presets:
+                if server not in pending_servers:
+                    pending_servers.append(server)
+    return pending_servers
+
+def get_server_id(title):
+    charMap = json.loads('{"$":"dollar","%":"percent","&":"and","<":"less",">":"greater","|":"or","¢":"cent","£":"pound"," ":"-",".":"-","/":""}')
+    for a in charMap:
+        title = title.replace(a,charMap[a])
+    return title
+
+def stop_server(id):
+    resp = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASS))
+
+def start_server(id):
+    resp = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS))
+
+
+#RUN
 if __name__ == "__main__":
     config_logger()
     sys.excepthook = my_handler
@@ -290,55 +347,72 @@ if __name__ == "__main__":
                 _name = os.path.splitext(file)[0]
                 log("Reading Mod Preset ("+file+")")
                 mods = loadMods(os.path.join(CONFIG_DIR, file))
-                update_mods(mods)
+                update_mods(file, mods)
 
         #Logging and notify
         if os.path.isfile(".update"):
-            log("The server is pending to be updated, attempting to update......")
-            players = get_online_players()
+            pending_servers = get_pending_servers()
+            pending_presets = get_pending_presets()
+            #for pending_server in pending_servers:  
+
+            log("Attempting to update the following servers:")
+            for pending_server in pending_servers:
+                logger.info(pending_server["title"])
+
+            players = get_online_players(pending_servers)
             #Players online, only ever notify once that it can't update as this runs every 5 minutes.
+
             if players:
                 Path('.notified').touch()
-                logger.info("Players are online, could not update at this time.")
                 if not os.path.isfile(".notified"):
-                    notify_players_online()
+                    notify_players_online(players)
+            else:  #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
+                # try:
+                #     win32serviceutil.StopService("arma-server-web-admin")
+                # except Exception as e:
+                #     if e.strerror== 'The specified service does not exist as an installed service.' or e.strerror=="The service has not been started.":
+                #         logger.error("The service could not be found.")
+                #     else: raise e
+                for pending_server in pending_servers:
+                    stop_server(get_server_id(pending_server["title"]))
+
+                notify_updating_server()
+
+                for file in os.listdir(CONFIG_DIR):
+                    if file.endswith(".html"):
+                        if file in pending_presets: #Check that is a preset that needs to updated symlink, if so go for it.
+                            _name = os.path.splitext(file)[0]
+                            log("Processing: {}".format(os.path.join(CONFIG_DIR, file)))
+                            clean_mods(_name)
+                            mods = loadMods(os.path.join(CONFIG_DIR, file))
+                            for m in mods:
+                                symlink_mod(m["ID"], _name)
+                                modify_mod_and_meta(m["ID"], _name, m["name"])
+
+                #Once done, restart the service and reset the updater ready to check for new updates.
+                # try:
+                #     win32serviceutil.StartService("arma-server-web-admin")
+                # except Exception as e:
+                #     if e.strerror == 'The specified service does not exist as an installed service.':
+                #         logger.error("The service could not be found.")
+                #     elif e.strerror == "The service has not been started.":
+                #         logger.error("The service has already been stopped.")
+                #     else: raise e
+                for pending_server in pending_servers:
+                    start_server(get_server_id(pending_server["title"]))
+
+                try:
+                    os.remove(".notified")
+                except FileNotFoundError:
+                    pass
+
+                os.remove(".update")
         else: 
             log("Mods are up to date, and the server does not need to be restarted.")
 
-
-        #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
-        if os.path.isfile(".update") and not players:
-            try:
-                win32serviceutil.StopService("arma-server-web-admin")
-            except Exception as e:
-                if e.strerror== 'The specified service does not exist as an installed service.' or e.strerror=="The service has not been started.":
-                    logger.error("The service could not be found.")
-                else: raise e
-            notify_updating_server()
-            for file in os.listdir(CONFIG_DIR):
-                if file.endswith(".html"):
-                    _name = os.path.splitext(file)[0]
-                    log("Processing: {}".format(os.path.join(CONFIG_DIR, file)))
-                    clean_mods(_name)
-                    mods = loadMods(os.path.join(CONFIG_DIR, file))
-                    for m in mods:
-                        symlink_mod(m["ID"], _name)
-                        modify_mod_and_meta(m["ID"], _name, m["name"])
-
-            #Once done, restart the service and reset the updater ready to check for new updates.
-            try:
-                win32serviceutil.StartService("arma-server-web-admin")
-            except Exception as e:
-                if e.strerror == 'The specified service does not exist as an installed service.':
-                    logger.error("The service could not be found.")
-                elif e.strerror == "The service has not been started.":
-                    logger.error("The service has already been stopped.")
-                else: raise e
-            try:
-                os.remove(".notified")
-            except FileNotFoundError:
-                pass
-            os.remove(".update")
-        os.remove(".running")
+        try:  
+            os.remove(".running")
+        except FileNotFoundError:
+            pass
     else:
         raise (RuntimeError("Script appears to be running already. If this is incorrect please remove .running file."))
