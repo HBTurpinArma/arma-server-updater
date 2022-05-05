@@ -7,7 +7,6 @@ import logging
 import sys
 import traceback
 from webbrowser import get
-import win32serviceutil
 import json
 from datetime import datetime
 from urllib import request
@@ -41,14 +40,14 @@ logger = logging.getLogger(__name__)
 ##CONFIGSTART
 SERVER_ID = "233780"
 WORKSHOP_ID = "107410"
+ 
+INSTALL_DIR = config["INSTALL_DIR"]
+CHECK_DIR = config["CHECK_DIR"]
+CONFIG_DIR = config["CONFIG_DIR"]
+ARMA_DIR = config["ARMA_DIR"]
+STEAMCMD_PATH = config["STEAMCMD_PATH"] 
 
-INSTALL_DIR = config["INSTALL_DIR"]  # "C:/HBTurpinTestArea/Mods/"
-CHECK_DIR = config["CHECK_DIR"]  # "C:/HBTurpinTestArea/Mods/steamapps/workshop/content/107410"
-CONFIG_DIR = config["CONFIG_DIR"]  # "C:/HBTurpinTestArea/Presets/" #change this
-ARMA_DIR = config["ARMA_DIR"]  # "C:/HBTurpinTestArea/Arma" #change this
-STEAMCMD_PATH = config["STEAMCMD_PATH"]  # "C:/HBTurpinTestArea/Arma" #change this
-
-STEAM_LOGIN = config["STEAM_LOGIN"] #We want to use AM2 Steam Account in the future, just need an easier way to get 2FA sorted.
+STEAM_LOGIN = config["STEAM_LOGIN"]
 PANEL_LOGIN = config["PANEL_LOGIN"]
 PANEL_PASS = config["PANEL_PASS"]
 
@@ -64,7 +63,7 @@ logger.info(config)
 ##LOGGING STUFF
 def config_logger():
     _now = datetime.now().strftime("%Y%m%d-%H%M%S")
-    logging.basicConfig(filename='Logs/log_{}.log'.format(_now), level=logging.DEBUG)
+    logging.basicConfig(filename='logs/log_{}.log'.format(_now), level=logging.DEBUG)
     # Configure logger to write to a file...
     # set up logging to console
     console = logging.StreamHandler()
@@ -82,7 +81,7 @@ def log(msg):
     logger.info("{{0:=<{}}}".format(len(msg)).format(""))
 
 def clean_logs():
-    for root, dirs, files in os.walk(os.path.join(os.getcwd(), "Logs")):
+    for root, dirs, files in os.walk(os.path.join(os.getcwd(), "logs")):
         for name in files:
             logger.info(name)
             if name.endswith(".log"):
@@ -177,7 +176,12 @@ def update_mods(preset, mods):
             modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     response = modHook.execute()
     
-
+def lowercase_mods(stagingPath):
+    for path, subdirs, files in os.walk(stagingPath):
+        for name in files:
+            file_path = os.path.join(path,name)
+            new_name = os.path.join(path,name.lower())
+            os.rename(file_path, new_name)
 
 # SYMLINK STUFF
 def clean_mods(modset):
@@ -197,48 +201,39 @@ def symlink_mod(id: str, modpack: str, _modPath:str= None):
     symlink_from_to(_modPath, _destPath)
 
 def symlink_from_to(_modPath, _destPath):
-    #_addonsDir = os.path.join(_modPath, "addons")
-    os.makedirs(os.path.join(_destPath, "addons"), exist_ok=True)
-    #_keysDir = os.path.join(_modPath, "keys")
-    os.makedirs(os.path.join(_destPath, "keys"), exist_ok=True)
     for root, dirs, files in os.walk(_modPath):
+        for dir in dirs:
+            os.makedirs(os.path.join(_destPath, dir), exist_ok=True)
+            logger.info("Created folder {}".format(dir))
         for name in files:
-            if name.endswith(".dll") or name.endswith(".so"):
-                #logger.info(os.path.join(_destPath, "addons", name))
+            if name == "mod.cpp" or name == "meta.cpp":
+                pass
+            else:
                 try: 
                     os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
                 except FileExistsError:
                     pass
-            elif name.endswith(".bikey"):
-                #logger.info(os.path.join(_destPath, "keys", name))
-                os.symlink(os.path.join(root, name), os.path.join(_destPath, "keys", name))
-            elif name.endswith(".pbo") or name.endswith(".ebo") or name.endswith(".bisign"):
-                #logger.info(os.path.join(_destPath, "addons", name))
-                try:
-                    os.symlink(os.path.join(root, name), os.path.join(_destPath, "addons", name))
-                except FileExistsError:
-                    pass
-            else:
-                continue
-            logger.info("Processed {} {}".format(_modPath, name))
+                logger.info("Processed {} {}".format(_modPath, name))
 
-def modify_mod_and_meta(id: str, modpack: str, name: str):
-    _modPath = os.path.join(CHECK_DIR, id)
-    _destPath = os.path.join(ARMA_DIR, modpack, "@"+id)
-    _addonsDir = os.path.join(_modPath, "addons")
+def modify_mod_and_meta(modid: str, modpack: str, modname: str):
+    _modPath = os.path.join(CHECK_DIR, modid)
+    _destPath = os.path.join(ARMA_DIR, modpack, "@"+modid)
     for root, dirs, files in os.walk(_modPath):
         for name in files:
             if name == "mod.cpp" or name == "meta.cpp":
-                with open(os.path.join(root, name), "r") as file:
+                with open(os.path.join(root, name), "r", encoding='utf8', errors='ignore') as file:
                     _data = file.readlines()
                 for i, l in enumerate(_data):
                     if l.startswith("name"):
-                        _data[i] = f'name="{id}";\n'
+                        _data[i] = f'name="{modid}";\n'
                 with open(os.path.join(_destPath, name), "w") as file:
                     file.writelines(_data)
                 logger.info("Processed {} {}".format(_modPath, name))
-            else:
-                os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
+##            else:
+##                try:
+##                   os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
+##                except FileExistsError:
+##                    pass
 
 
 ##ONLINE PLAYERS
@@ -348,6 +343,8 @@ if __name__ == "__main__":
                 log("Reading Mod Preset ("+file+")")
                 mods = loadMods(os.path.join(CONFIG_DIR, file))
                 update_mods(file, mods)
+                
+        lowercase_mods(CHECK_DIR) ##Needed for linux :S
 
         #Logging and notify
         if os.path.isfile(".update"):
@@ -377,17 +374,17 @@ if __name__ == "__main__":
                     stop_server(get_server_id(pending_server["title"]))
 
                 notify_updating_server()
-
+ 
                 for file in os.listdir(CONFIG_DIR):
                     if file.endswith(".html"):
-                        if file in pending_presets: #Check that is a preset that needs to updated symlink, if so go for it.
-                            _name = os.path.splitext(file)[0]
-                            log("Processing: {}".format(os.path.join(CONFIG_DIR, file)))
-                            clean_mods(_name)
-                            mods = loadMods(os.path.join(CONFIG_DIR, file))
-                            for m in mods:
-                                symlink_mod(m["ID"], _name)
-                                modify_mod_and_meta(m["ID"], _name, m["name"])
+                        ##if file in pending_presets: #Check that is a preset that needs to updated symlink, if so go for it.
+                        _name = os.path.splitext(file)[0]
+                        log("Processing: {}".format(os.path.join(CONFIG_DIR, file)))
+                        clean_mods(_name)
+                        mods = loadMods(os.path.join(CONFIG_DIR, file))
+                        for m in mods:
+                            symlink_mod(m["ID"], _name)
+                            modify_mod_and_meta(m["ID"], _name, m["name"])
 
                 #Once done, restart the service and reset the updater ready to check for new updates.
                 # try:
