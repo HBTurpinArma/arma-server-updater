@@ -201,23 +201,35 @@ def symlink_mod(id: str, modpack: str, _modPath:str= None):
     symlink_from_to(_modPath, _destPath)
 
 def symlink_from_to(_modPath, _destPath):
+    os.makedirs(os.path.join(_destPath, "addons"), exist_ok=True)
+    os.makedirs(os.path.join(_destPath, "keys"), exist_ok=True)
     for root, dirs, files in os.walk(_modPath):
-        for dir in dirs:
-            os.makedirs(os.path.join(_destPath, dir), exist_ok=True)
-            logger.info("Created folder {}".format(dir))
         for name in files:
-            if name == "mod.cpp" or name == "meta.cpp":
-                pass
-            else:
+            if name.endswith(".dll") or name.endswith(".so"):
                 try: 
                     os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
                 except FileExistsError:
                     pass
-                logger.info("Processed {} {}".format(_modPath, name))
+            elif name.endswith(".bikey"):
+                try:
+                    os.symlink(os.path.join(root, name), os.path.join(_destPath, "keys", name))
+                except FileExistsError:
+                    pass
+            elif name.endswith(".pbo") or name.endswith(".ebo") or name.endswith(".bisign"):
+                if "optional" in root:
+                    pass
+                else:
+                    try:
+                        os.symlink(os.path.join(root, name), os.path.join(_destPath, "addons", name))
+                    except FileExistsError:
+                        pass
+            else:
+                continue
+            logger.info("Processed {} {}".format(_modPath, name))
 
-def modify_mod_and_meta(modid: str, modpack: str, modname: str):
-    _modPath = os.path.join(CHECK_DIR, modid)
-    _destPath = os.path.join(ARMA_DIR, modpack, "@"+modid)
+def modify_mod_and_meta(id: str, modpack: str, name: str):
+    _modPath = os.path.join(CHECK_DIR, id)
+    _destPath = os.path.join(ARMA_DIR, modpack, "@"+id)
     for root, dirs, files in os.walk(_modPath):
         for name in files:
             if name == "mod.cpp" or name == "meta.cpp":
@@ -225,15 +237,10 @@ def modify_mod_and_meta(modid: str, modpack: str, modname: str):
                     _data = file.readlines()
                 for i, l in enumerate(_data):
                     if l.startswith("name"):
-                        _data[i] = f'name="{modid}";\n'
-                with open(os.path.join(_destPath, name), "w") as file:
+                        _data[i] = f'name="{id}";\n'
+                with open(os.path.join(_destPath, name), "w", encoding="utf-8") as file:
                     file.writelines(_data)
                 logger.info("Processed {} {}".format(_modPath, name))
-##            else:
-##                try:
-##                   os.symlink(os.path.join(root, name), os.path.join(_destPath, name))
-##                except FileExistsError:
-##                    pass
 
 
 ##ONLINE PLAYERS
@@ -364,12 +371,6 @@ if __name__ == "__main__":
                 if not os.path.isfile(".notified"):
                     notify_players_online(players)
             else:  #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
-                # try:
-                #     win32serviceutil.StopService("arma-server-web-admin")
-                # except Exception as e:
-                #     if e.strerror== 'The specified service does not exist as an installed service.' or e.strerror=="The service has not been started.":
-                #         logger.error("The service could not be found.")
-                #     else: raise e
                 for pending_server in pending_servers:
                     stop_server(get_server_id(pending_server["title"]))
 
@@ -377,24 +378,15 @@ if __name__ == "__main__":
  
                 for file in os.listdir(CONFIG_DIR):
                     if file.endswith(".html"):
-                        ##if file in pending_presets: #Check that is a preset that needs to updated symlink, if so go for it.
-                        _name = os.path.splitext(file)[0]
-                        log("Processing: {}".format(os.path.join(CONFIG_DIR, file)))
-                        clean_mods(_name)
-                        mods = loadMods(os.path.join(CONFIG_DIR, file))
-                        for m in mods:
-                            symlink_mod(m["ID"], _name)
-                            modify_mod_and_meta(m["ID"], _name, m["name"])
+                        if file in pending_presets: #Check that is a preset that needs to updated symlink, if so go for it.
+                            _name = os.path.splitext(file)[0]
+                            log("Processing: {}".format(os.path.join(CONFIG_DIR, file)))
+                            clean_mods(_name)
+                            mods = loadMods(os.path.join(CONFIG_DIR, file))
+                            for m in mods:
+                                symlink_mod(m["ID"], _name)
+                                modify_mod_and_meta(m["ID"], _name, m["name"])
 
-                #Once done, restart the service and reset the updater ready to check for new updates.
-                # try:
-                #     win32serviceutil.StartService("arma-server-web-admin")
-                # except Exception as e:
-                #     if e.strerror == 'The specified service does not exist as an installed service.':
-                #         logger.error("The service could not be found.")
-                #     elif e.strerror == "The service has not been started.":
-                #         logger.error("The service has already been stopped.")
-                #     else: raise e
                 for pending_server in pending_servers:
                     start_server(get_server_id(pending_server["title"]))
 
