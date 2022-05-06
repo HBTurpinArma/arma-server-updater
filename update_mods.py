@@ -120,7 +120,7 @@ def is_updated(mod_id, path):
     logger.info(" Checking {}{}".format(path, mod_id))
     logger.info("   Current Version Found: {}".format(current_version))
 
-    if not workshop_version: #Workshop version can't be found - likely is removed/hidden. No need to keep updating so return true.
+    if not workshop_version or workshop_version == None: #Workshop version can't be found - likely is removed/hidden. No need to keep updating so return true.
         return True
 
     if current_version:
