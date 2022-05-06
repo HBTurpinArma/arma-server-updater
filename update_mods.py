@@ -62,6 +62,7 @@ logger.info(config)
 
 ##LOGGING STUFF
 def config_logger():
+    os.makedirs("logs", exist_ok=True)
     _now = datetime.now().strftime("%Y%m%d-%H%M%S")
     logging.basicConfig(filename='logs/log_{}.log'.format(_now), level=logging.DEBUG)
     # Configure logger to write to a file...
