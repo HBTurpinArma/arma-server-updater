@@ -358,7 +358,6 @@ if __name__ == "__main__":
         if os.path.isfile(".update"):
             pending_servers = get_pending_servers()
             pending_presets = get_pending_presets()
-            #for pending_server in pending_servers:  
 
             log("Attempting to update the following servers:")
             for pending_server in pending_servers:
@@ -366,7 +365,6 @@ if __name__ == "__main__":
 
             players = get_online_players(pending_servers)
             #Players online, only ever notify once that it can't update as this runs every 5 minutes.
-
             if players:
                 Path('.notified').touch()
                 if not os.path.isfile(".notified"):
