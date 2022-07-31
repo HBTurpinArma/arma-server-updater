@@ -262,7 +262,7 @@ def notify_updating_server(pending):
     playerEmbed = DiscordEmbed(title='[SUCCESS] The servers are being updated.', description=f'There are {len(pending)} pending servers awaiting updates. These are empty and will restarted if they are online.', color='21dd21')
     server_names = ""
     for server in pending:
-        server_names += server['title']
+        server_names += server['title'] + "\n"
 
     playerEmbed.add_embed_field(name="Pending Servers", value=server_names)
     playerHook.add_embed(playerEmbed)
@@ -318,11 +318,11 @@ def get_pending_servers():
     serversJSON = json.load(open(SERVERS_JSON_FILE, "r"))
     for server in serversJSON:
         for server_mod in server["mods"]: #mods_ids
-            if server_mod.split("\\")[-1] in pending_mod_ids:
+            if server_mod.replace("/","\\").split("\\")[-1] in pending_mod_ids:
                 if server not in pending_servers:
                     pending_servers.append(server)
         for server_mod in server["mods"]: #presets
-            if server_mod.split("\\")[0]+".html" in pending_presets:
+            if server_mod.replace("/","\\").split("\\")[0]+".html" in pending_presets:
                 if server not in pending_servers:
                     pending_servers.append(server)
     return pending_servers

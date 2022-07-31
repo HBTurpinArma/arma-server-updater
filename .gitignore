@@ -4,6 +4,7 @@
 logs/*
 staging/*
 output_test/*
+presets/*
 
 #Tags
 .notified
