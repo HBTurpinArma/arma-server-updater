@@ -336,6 +336,7 @@ def get_pending_servers():
     return pending_servers
 
 def get_server_id(title):
+    title = title.lstrip(' ').rstrip(' ') #remove leading whitespace and trailing whitespace
     charMap = json.loads('{"$":"dollar","%":"percent","&":"and","<":"less",">":"greater","|":"or","¢":"cent","£":"pound"," ":"-",".":"-","/":""}')
     for a in charMap:
         title = title.replace(a,charMap[a])
