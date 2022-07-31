@@ -334,14 +334,14 @@ def get_server_id(title):
 
 def stop_server(id):
     try:
-        return requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASS))
+        return requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=3)
     except requests.exceptions.RequestException as e:  # This is the correct syntax
         pass
    
 
 def start_server(id):
     try:
-        return requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS))
+        return requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=3)
     except requests.exceptions.RequestException as e:  # This is the correct syntax
         pass
     
