@@ -390,8 +390,8 @@ if __name__ == "__main__":
                                 symlink_mod(m["ID"], _name)
                                 modify_mod_and_meta(m["ID"], _name, m["name"])
 
-                for pending_server in pending_servers:
-                    start_server(get_server_id(pending_server["title"]))
+                #for pending_server in pending_servers:
+                    #start_server(get_server_id(pending_server["title"]))
 
                 try:
                     os.remove(".notified")
