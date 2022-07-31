@@ -247,7 +247,7 @@ def modify_mod_and_meta(id: str, modpack: str, name: str):
 ##ONLINE PLAYERS
 def notify_players_online(players):
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    playerEmbed = DiscordEmbed(title='[ERROR] Could not shutdown and update servers...', description='The following users are online.', color='dd2121')
+    playerEmbed = DiscordEmbed(title='[ERROR] The servers are being updated.', description='The following users are online.', color='dd2121')
     for k, v in players.items():
         p = ""
         for player in v:
@@ -257,11 +257,17 @@ def notify_players_online(players):
     playerHook.add_embed(playerEmbed)
     response = playerHook.execute()
 
-def notify_updating_server():
+def notify_updating_server(pending):
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    playerEmbed = DiscordEmbed(title='[INFO] Attempting to update the servers...', description='The servers are empty and shutting down.', color='21dd21')
+    playerEmbed = DiscordEmbed(title='[SUCCESS] The servers are being updated.', description=f'There are {len(pending)} pending servers awaiting updates. These are empty and will restarted if they are online.', color='21dd21')
+    server_names = ""
+    for server in pending:
+        server_names += server['title']
+
+    playerEmbed.add_embed_field(name="Pending Servers", value=server_names)
     playerHook.add_embed(playerEmbed)
     response = playerHook.execute()
+
 
 def get_online_players(servers):
     players = {}
@@ -373,7 +379,7 @@ if __name__ == "__main__":
                 for pending_server in pending_servers:
                     stop_server(get_server_id(pending_server["title"]))
 
-                notify_updating_server()
+                notify_updating_server(pending_servers)
  
                 for file in os.listdir(CONFIG_DIR):
                     if file.endswith(".html"):
