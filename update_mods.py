@@ -257,14 +257,23 @@ def notify_players_online(players):
     playerHook.add_embed(playerEmbed)
     response = playerHook.execute()
 
-def notify_updating_server(pending):
+def notify_stopping_server(pending):
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    playerEmbed = DiscordEmbed(title='[SUCCESS] The servers are being updated.', description=f'There are {len(pending)} pending servers awaiting updates. These are empty and will restarted if they are online.', color='21dd21')
+    playerEmbed = DiscordEmbed(title='[INFO] The servers are being stopped.', description=f'There are {len(pending)} pending servers awaiting updates. These are empty and will be stopped.', color='2121dd')
     server_names = ""
     for server in pending:
         server_names += server['title'] + "\n"
-
     playerEmbed.add_embed_field(name="Pending Servers", value=server_names)
+    playerHook.add_embed(playerEmbed)
+    response = playerHook.execute()
+
+def notify_starting_server(pending):
+    playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+    playerEmbed = DiscordEmbed(title='[INFO] The servers are being started.', description=f'These servers have been updated and are now starting...', color='21dd21')
+    server_names = ""
+    for server in pending:
+        server_names += server['title'] + "\n"
+    playerEmbed.add_embed_field(name="Starting Servers", value=server_names)
     playerHook.add_embed(playerEmbed)
     response = playerHook.execute()
 
@@ -338,7 +347,6 @@ def stop_server(id):
     except requests.exceptions.RequestException as e:  # This is the correct syntax
         pass
    
-
 def start_server(id):
     try:
         return requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=3)
@@ -385,8 +393,7 @@ if __name__ == "__main__":
             else:  #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
                 for pending_server in pending_servers:
                     stop_server(get_server_id(pending_server["title"]))
-
-                notify_updating_server(pending_servers)
+                notify_stopping_server(pending_servers)
  
                 for file in os.listdir(CONFIG_DIR):
                     if file.endswith(".html"):
@@ -401,6 +408,7 @@ if __name__ == "__main__":
 
                 for pending_server in pending_servers:
                     start_server(get_server_id(pending_server["title"]))
+                notify_starting_server(pending_servers)
 
                 try:
                     os.remove(".notified")
