@@ -343,15 +343,19 @@ def get_server_id(title):
 
 def stop_server(id):
     try:
-        return requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=3)
+        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=3)
+        if response.status_code == requests.codes.ok:
+            return True
     except requests.exceptions.RequestException as e:  # This is the correct syntax
-        pass
+        return False
    
 def start_server(id):
     try:
-        return requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=3)
+        response = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=3)
+        if response.status_code == requests.codes.ok:
+            return True
     except requests.exceptions.RequestException as e:  # This is the correct syntax
-        pass
+        return False
     
 
 
@@ -391,9 +395,12 @@ if __name__ == "__main__":
                 if not os.path.isfile(".notified"):
                     notify_players_online(players)
             else:  #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
+                stopped_servers = []
                 for pending_server in pending_servers:
-                    stop_server(get_server_id(pending_server["title"]))
-                notify_stopping_server(pending_servers)
+                    success = stop_server(get_server_id(pending_server["title"]))
+                    if success:
+                        stopped_servers.append(pending_server)
+                notify_stopping_server(stopped_servers)
  
                 for file in os.listdir(CONFIG_DIR):
                     if file.endswith(".html"):
@@ -406,9 +413,9 @@ if __name__ == "__main__":
                                 symlink_mod(m["ID"], _name)
                                 modify_mod_and_meta(m["ID"], _name, m["name"])
 
-                for pending_server in pending_servers:
-                    start_server(get_server_id(pending_server["title"]))
-                notify_starting_server(pending_servers)
+                for stopped_server in stopped_servers:
+                    start_server(get_server_id(stopped_server["title"]))
+                notify_starting_server(stopped_servers)
 
                 try:
                     os.remove(".notified")
