@@ -162,7 +162,7 @@ def update_mods(preset, mods):
             steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
         steam_cmd_params += " +quit"
         call_steamcmd(steam_cmd_params)
-
+        #workshop_download_item 107410 769440155
 
     # Send Discord which mods are being updated.
     modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
@@ -297,16 +297,7 @@ def get_pending_presets():
         mod_ids = [mod_ids]
     presets = []
     for preset in os.listdir(CONFIG_DIR):
-        if preset.endswith(".html"):
-            preset_mods = loadMods(os.path.join(CONFIG_DIR, preset))
-            preset_mods_ids = []
-            for preset_mod in preset_mods:
-                preset_mods_ids.append(preset_mod['ID'])
-
-            for mod_id in mod_ids:
-                if mod_id in preset_mods_ids:
-                    if preset not in presets:
-                        presets.append(preset)
+        presets.append(preset)
     return presets
 
 def get_pending_servers():
