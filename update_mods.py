@@ -343,7 +343,7 @@ def get_server_id(title):
 
 def stop_server(id):
     try:
-        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=3)
+        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=6)
         if response.status_code == requests.codes.ok:
             return True
     except requests.exceptions.RequestException as e:  # This is the correct syntax
@@ -351,7 +351,7 @@ def stop_server(id):
    
 def start_server(id):
     try:
-        response = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=3)
+        response = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=6)
         if response.status_code == requests.codes.ok:
             return True
     except requests.exceptions.RequestException as e:  # This is the correct syntax
@@ -384,9 +384,7 @@ if __name__ == "__main__":
             pending_servers = get_pending_servers()
             pending_presets = get_pending_presets()
 
-            log("Attempting to update the following servers:")
-            for pending_server in pending_servers:
-                logger.info(pending_server["title"])
+            log("Attempting to update servers:")
 
             players = get_online_players(pending_servers)
             #Players online, only ever notify once that it can't update as this runs every 5 minutes.
@@ -395,13 +393,18 @@ if __name__ == "__main__":
                 if not os.path.isfile(".notified"):
                     notify_players_online(players)
             else:  #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
+                #Attempt to stop all servers that involve pending modpacks
                 stopped_servers = []
                 for pending_server in pending_servers:
                     success = stop_server(get_server_id(pending_server["title"]))
                     if success:
+                        logger.info(pending_server["title"] + " (SUCCESS) Server stop command recieved.")
                         stopped_servers.append(pending_server)
+                    else:
+                        logger.info(pending_server["title"] + " (FAILED) Server could be offline.")
                 notify_stopping_server(stopped_servers)
  
+                #Symlink files of pending modpacks
                 for file in os.listdir(CONFIG_DIR):
                     if file.endswith(".html"):
                         if file in pending_presets: #Check that is a preset that needs to updated symlink, if so go for it.
@@ -413,16 +416,21 @@ if __name__ == "__main__":
                                 symlink_mod(m["ID"], _name)
                                 modify_mod_and_meta(m["ID"], _name, m["name"])
 
+                #Attempt to start all servers that had been stopped previously
                 for stopped_server in stopped_servers:
-                    start_server(get_server_id(stopped_server["title"]))
+                    success = start_server(get_server_id(stopped_server["title"]))
+                    if success:
+                        logger.info(pending_server["title"] + " (SUCCESS) Server start command recieved.")
+                    else:
+                        logger.info(pending_server["title"] + " (FAILED) Potential issue, server could not be started.")
                 notify_starting_server(stopped_servers)
 
+                #Success, lets reset the script to be run again.
                 try:
                     os.remove(".notified")
+                    os.remove(".update")
                 except FileNotFoundError:
                     pass
-
-                os.remove(".update")
         else: 
             log("Mods are up to date, and the server does not need to be restarted.")
 
