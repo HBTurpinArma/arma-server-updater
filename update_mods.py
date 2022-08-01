@@ -107,6 +107,15 @@ def get_workshop_version(mod_id):
     if match:
         return datetime.fromtimestamp(int(match.group(1)))
 
+def get_workshop_changelog(mod_id):
+    PATTERN = re.compile(r"workshopAnnouncement.*?<p .*?\>(.*?)</p>", re.DOTALL)
+    WORKSHOP_CHANGELOG_URL = "https://steamcommunity.com/sharedfiles/filedetails/changelog"
+    response = request.urlopen("{}/{}".format(WORKSHOP_CHANGELOG_URL, mod_id)).read()
+    response = response.decode("utf-8")
+    match = PATTERN.search(response)
+    if match:
+        return match.group(1).replace("<br>", "\n");
+
 def get_current_version(mod_id, path):
     if os.path.isdir("{}/{}".format(path, mod_id)):
         return datetime.fromtimestamp(os.path.getmtime("{}/{}/meta.cpp".format(path, mod_id)))
@@ -167,7 +176,8 @@ def update_mods(preset, mods):
     # Send Discord which mods are being updated.
     modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     for index, mod in enumerate(mods_to_download):
-        modEmbed = DiscordEmbed(title='[UPDATE] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='https://steamcommunity.com/sharedfiles/filedetails/?id={}'.format(mod["ID"]), color='2121cc')
+        modEmbed = DiscordEmbed(title='[UPDATE] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='[View Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id={}) | [View Changelog](https://steamcommunity.com/sharedfiles/filedetails/changelog/{})'.format(mod["ID"],mod["ID"]), color='2121cc')
+        modEmbed.add_embed_field(name='Latest Changelog', value=str(get_workshop_changelog(mod["ID"])), inline=False)
         modEmbed.add_embed_field(name='Previous Version', value=current_version)
         modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])))
         modEmbed.set_footer(text='Required by ' + preset)
@@ -301,7 +311,6 @@ def get_pending_presets():
     mod_ids = []
     with open(".update") as update:
         mod_ids = update.read().splitlines() 
-
     if isinstance(mod_ids, str): 
         mod_ids = [mod_ids]
     presets = []
@@ -429,6 +438,10 @@ if __name__ == "__main__":
                 #Success, lets reset the script to be run again.
                 try:
                     os.remove(".notified")
+                except FileNotFoundError:
+                    pass
+                    
+                try:
                     os.remove(".update")
                 except FileNotFoundError:
                     pass
