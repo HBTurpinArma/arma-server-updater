@@ -51,9 +51,8 @@ STEAM_LOGIN = config["STEAM_LOGIN"]
 PANEL_LOGIN = config["PANEL_LOGIN"]
 PANEL_PASS = config["PANEL_PASS"]
 
-DISCORD_WEBHOOK = config[
-    "DISCORD_WEBHOOK"]  # 'https://discord.com/api/webhooks/909859742774611999/HcU7v8b0c5Ce9QKK9EGkAeDaVw7tp37ge5orFjWpxaNSdCid7ulABPxKDomWc13B11HO'
-SERVERS_JSON_FILE = config["SERVERS_JSON_FILE"]  # "C:/arma-server-web-admin/servers.json"
+DISCORD_WEBHOOK = config["DISCORD_WEBHOOK"]
+SERVERS_JSON_FILE = config["SERVERS_JSON_FILE"]
 
 depot_rel_path = "/steamapps/content/app_{app}/depot_{depot}"
 depot_path = f"{STEAMCMD_PATH}{depot_rel_path}"
