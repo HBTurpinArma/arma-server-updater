@@ -6,24 +6,24 @@ import sys
 import logging
 import sys
 import traceback
-from webbrowser import get
 import json
 from datetime import datetime
 from urllib import request
-from pprint import pprint
 from discord_webhook import DiscordWebhook, DiscordEmbed
 from pathlib import Path
 import a2s
-import process_html
 from process_html import loadMods
 from dotenv import dotenv_values
 import requests
-import hashlib
-from _hashlib import HASH as Hash
 from pathlib import Path
-from typing import Union
+import argparse
 
 config = dotenv_values(".env")
+
+parser = argparse.ArgumentParser(description="", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("-f", "--force", action="store_true", help="force an update of every preset and re-symlink.")
+args = parser.parse_args()
+
 
 def my_handler(type, value, tb):
     for line in traceback.TracebackException(type, value, tb).format(chain=True):
@@ -161,7 +161,7 @@ def update_mods(preset, mods):
             update_file.writelines(mod["ID"]+"\n")
 
     # Download the mod via steamcmd.
-    if  mods_to_download:
+    if mods_to_download:
         log("Attempting to download the following mods with steamcmd:")
         steam_cmd_params = " +force_install_dir {}".format(INSTALL_DIR)
         steam_cmd_params += " +login {}".format(STEAM_LOGIN)
@@ -185,7 +185,8 @@ def update_mods(preset, mods):
             response = modHook.execute()
             modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     response = modHook.execute()
-    
+
+
 def lowercase_mods(stagingPath):
     for path, subdirs, files in os.walk(stagingPath):
         for name in files:
@@ -313,17 +314,22 @@ def get_pending_presets():
     if isinstance(mod_ids, str): 
         mod_ids = [mod_ids]
     presets = []
-    for preset in os.listdir(CONFIG_DIR):
-        if preset.endswith(".html"):
-            preset_mods = loadMods(os.path.join(CONFIG_DIR, preset))
-            preset_mods_ids = []
-            for preset_mod in preset_mods:
-                preset_mods_ids.append(preset_mod['ID'])
 
-            for mod_id in mod_ids:
-                if mod_id in preset_mods_ids:
-                    if preset not in presets:
-                        presets.append(preset)
+    if args.force:
+        for preset in os.listdir(CONFIG_DIR):
+            presets.append(preset)
+    else:
+        for preset in os.listdir(CONFIG_DIR):
+            if preset.endswith(".html"):
+                preset_mods = loadMods(os.path.join(CONFIG_DIR, preset))
+                preset_mods_ids = []
+                for preset_mod in preset_mods:
+                    preset_mods_ids.append(preset_mod['ID'])
+
+                for mod_id in mod_ids:
+                    if mod_id in preset_mods_ids:
+                        if preset not in presets:
+                            presets.append(preset)
     return presets
 
 def get_pending_servers():
