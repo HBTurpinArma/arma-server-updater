@@ -94,7 +94,7 @@ def update_game():
             #steam_cmd_params += " +force_install_dir {}".format(ARMA_DIR)
             steam_cmd_params += " +download_depot  {}  {}  {}".format(SERVER_ID, v["depot"], v["manifest"])
         steam_cmd_params += " -validate +quit"
-        #call_steamcmd(steam_cmd_params)
+        call_steamcmd(steam_cmd_params)
         for k, v in DEPOTS.items():
             try:
                 extract_dlc("{}steamapps/content/app_233780/depot_{}".format(STEAMCMD_PATH, v["depot"]))
