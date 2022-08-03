@@ -60,9 +60,9 @@ logger = logging.getLogger(__name__)
 logger.info(config)
 
 def config_logger():
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs(f"{PATH_BASE}logs", exist_ok=True)
     _now = datetime.now().strftime("%Y%m%d-%H%M%S")
-    logging.basicConfig(filename='logs/log_{}.log'.format(_now), level=logging.DEBUG)
+    logging.basicConfig(filename="{}logs/log_{}.log'".format(PATH_BASE, _now), level=logging.DEBUG)
     # Configure logger to write to a file...
     # set up logging to console
     console = logging.StreamHandler()
