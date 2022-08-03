@@ -81,14 +81,10 @@ def call_steamcmd(params):
     logger.info("{} {}".format("steamcmd", params))
     os.system("{} {}".format("steamcmd", params))
 
-def extract_dlc(path):
-    copy_tree(path, ARMA_DIR)
-
 def update_game():
     steam_cmd_params = " +force_install_dir {}".format(ARMA_DIR)
     steam_cmd_params += " +login {}".format(STEAM_LOGIN)
     steam_cmd_params += ' +app_update 233780 -beta creatordlc " validate +quit {}'.format(SERVER_ID)
-
     call_steamcmd(steam_cmd_params)
         
 def notify_stopping_server():
