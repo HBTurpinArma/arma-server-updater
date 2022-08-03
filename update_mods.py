@@ -228,7 +228,7 @@ def symlink_from_to(_modPath, _destPath):
                 except FileExistsError:
                     pass
             elif name.endswith(".pbo") or name.endswith(".ebo") or name.endswith(".bisign"):
-                if "optional" in root:
+                if "optional" in root or "optionals" in root or "Optional" in root or "Optionals" in root:
                     pass
                 else:
                     try:
