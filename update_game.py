@@ -85,21 +85,21 @@ def extract_dlc(path):
     copy_tree(path, ARMA_DIR)
 
 def update_game():
-    with open("depots.json", "r") as depot_file:
-        DEPOTS = json.load(depot_file)
-        steam_cmd_params = " +force_install_dir {}".format(ARMA_DIR)
-        steam_cmd_params += " +login {}".format(STEAM_LOGIN)
-        steam_cmd_params += " +app_update {}".format(SERVER_ID)
-        for k, v in DEPOTS.items():
+    #with open("depots.json", "r") as depot_file:
+        #DEPOTS = json.load(depot_file)
+    steam_cmd_params = " +force_install_dir {}".format(ARMA_DIR)
+    steam_cmd_params += " +login {}".format(STEAM_LOGIN)
+    steam_cmd_params += ' app_update 233780 -beta creatordlc " validate +quit {}'.format(SERVER_ID)
+        #for k, v in DEPOTS.items():
             #steam_cmd_params += " +force_install_dir {}".format(ARMA_DIR)
-            steam_cmd_params += " +download_depot  {}  {}  {}".format(SERVER_ID, v["depot"], v["manifest"])
-        steam_cmd_params += " -validate +quit"
-        call_steamcmd(steam_cmd_params)
-        for k, v in DEPOTS.items():
-            try:
-                extract_dlc("{}steamapps/content/app_233780/depot_{}".format(STEAMCMD_PATH, v["depot"]))
-            except Exception:
-                pass
+            #steam_cmd_params += " +download_depot  {}  {}  {}".format(SERVER_ID, v["depot"], v["manifest"])
+    steam_cmd_params += " -validate +quit"
+    call_steamcmd(steam_cmd_params)
+        # for k, v in DEPOTS.items():
+        #     try:
+        #         extract_dlc("{}steamapps/content/app_233780/depot_{}".format(STEAMCMD_PATH, v["depot"]))
+        #     except Exception:
+        #         pass
         
 def notify_stopping_server():
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
