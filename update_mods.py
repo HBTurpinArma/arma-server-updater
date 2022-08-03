@@ -52,7 +52,10 @@ def my_handler(type, value, tb):
         logging.exception(line)
     logging.exception(value)
     if not value =="Script appears to be running already. If this is incorrect please remove .running file.":
-        os.remove(f"{PATH_BASE}.running")
+        try:
+            os.remove(f"{PATH_BASE}.running")
+        except Exception:
+            pass
     sys.__excepthook__(type, value, tb)  # calls default excepthook
 
 # Install exception handler
