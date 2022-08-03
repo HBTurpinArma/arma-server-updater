@@ -165,7 +165,7 @@ def update_mods(preset, mods):
     # Download the mod via steamcmd.
     if mods_to_download:
         log("Attempting to download the following mods with steamcmd:")
-        steam_cmd_params = " +force_PATH_STAGING {}".format(PATH_STAGING)
+        steam_cmd_params = " +force_install_dir {}".format(PATH_STAGING)
         steam_cmd_params += " +login {}".format(STEAM_LOGIN)
         for mod in mods_to_download:
             logger.info("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
