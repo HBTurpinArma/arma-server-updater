@@ -80,7 +80,7 @@ def log(msg):
     logger.info("{{0:=<{}}}".format(len(msg)).format(""))
 
 def clean_logs():
-    for root, dirs, files in os.walk(os.path.join(os.getcwd(), "logs")):
+    for root, dirs, files in os.walk(os.path.join(PATH_BASE, "logs")):
         for name in files:
             logger.info(name)
             if name.endswith(".log"):
