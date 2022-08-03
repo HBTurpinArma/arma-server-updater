@@ -18,48 +18,47 @@ import requests
 from pathlib import Path
 import argparse
 
-config = dotenv_values(".env")
-
+##ADDITIONAL ARGUMENTS FOR SCRIPT
 parser = argparse.ArgumentParser(description="", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-f", "--force", action="store_true", help="force an update of every preset and re-symlink.")
+parser.add_argument("-d", "--discord", action="store_true", help="enables use of the discord webhook to notify actions")
 args = parser.parse_args()
 
+##CONFIGSTART
+config = dotenv_values(".env")
 
+SERVER_ID = "233780"
+WORKSHOP_ID = "107410"
+
+PATH_BASE = config["PATH_BASE"]
+PATH_STAGING = config["PATH_STAGING"]
+PATH_STAGING_MODS = config["PATH_STAGING_MODS"]
+PATH_PRESETS = config["PATH_PRESETS"]
+PATH_SERVER = config["PATH_SERVER"]
+
+STEAM_LOGIN = config["STEAM_LOGIN"]
+STEAM_PASSWORD = config["STEAM_PASSWORD"] #NOT USED - BUT MAY WANT TO IF CREDENTIAL CACHING BECOMES A PROBLEM
+
+PANEL_SERVERS = config["PANEL_SERVERS"]
+PANEL_IP = config["PANEL_IP"]
+PANEL_LOGIN = config["PANEL_LOGIN"]
+PANEL_PASSWORD = config["PANEL_PASSWORD"]
+
+DISCORD_WEBHOOK = config["DISCORD_WEBHOOK"]
+
+##LOGGING STUFF
 def my_handler(type, value, tb):
     for line in traceback.TracebackException(type, value, tb).format(chain=True):
         logging.exception(line)
     logging.exception(value)
     if not value =="Script appears to be running already. If this is incorrect please remove .running file.":
-        os.remove(".running")
+        os.remove(f"{PATH_BASE}.running")
     sys.__excepthook__(type, value, tb)  # calls default excepthook
 
 # Install exception handler
-
 logger = logging.getLogger(__name__)
-
-##CONFIGSTART
-SERVER_ID = "233780"
-WORKSHOP_ID = "107410"
- 
-INSTALL_DIR = config["INSTALL_DIR"]
-CHECK_DIR = config["CHECK_DIR"]
-CONFIG_DIR = config["CONFIG_DIR"]
-ARMA_DIR = config["ARMA_DIR"]
-STEAMCMD_PATH = config["STEAMCMD_PATH"] 
-
-STEAM_LOGIN = config["STEAM_LOGIN"]
-PANEL_LOGIN = config["PANEL_LOGIN"]
-PANEL_PASS = config["PANEL_PASS"]
-
-DISCORD_WEBHOOK = config["DISCORD_WEBHOOK"]
-SERVERS_JSON_FILE = config["SERVERS_JSON_FILE"]
-
-depot_rel_path = "/steamapps/content/app_{app}/depot_{depot}"
-depot_path = f"{STEAMCMD_PATH}{depot_rel_path}"
-
 logger.info(config)
 
-##LOGGING STUFF
 def config_logger():
     os.makedirs("logs", exist_ok=True)
     _now = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -140,9 +139,9 @@ def update_mods(preset, mods):
     for mod in mods:
         logger.info("\n")
         # Check if mod needs to be updated
-        current_version = str(get_current_version(mod["ID"], CHECK_DIR))
-        if os.path.isdir("{}/{}".format(CHECK_DIR, mod["ID"])):
-            if not is_updated(mod["ID"], CHECK_DIR):
+        current_version = str(get_current_version(mod["ID"], PATH_STAGING_MODS))
+        if os.path.isdir("{}/{}".format(PATH_STAGING_MODS, mod["ID"])):
+            if not is_updated(mod["ID"], PATH_STAGING_MODS):
                 logger.info("Update required for \"{}\" ({})".format(mod["name"], mod["ID"]))
                 # shutil.rmtree(path)  # Delete current version if it exists.
             else:
@@ -155,22 +154,21 @@ def update_mods(preset, mods):
         mods_to_download.append(mod)
 
         #Add mods to the update file to be read everytime we need to attempt to restart servers
-        if not os.path.isfile(".update"):
-            Path('.update').touch()
-        with open('.update', 'a') as update_file:
+        if not os.path.isfile(f"{PATH_BASE}.update"):
+            Path(f"{PATH_BASE}.update").touch()
+        with open(f"{PATH_BASE}.update", "a") as update_file:
             update_file.writelines(mod["ID"]+"\n")
 
     # Download the mod via steamcmd.
     if mods_to_download:
         log("Attempting to download the following mods with steamcmd:")
-        steam_cmd_params = " +force_install_dir {}".format(INSTALL_DIR)
+        steam_cmd_params = " +force_PATH_STAGING {}".format(PATH_STAGING)
         steam_cmd_params += " +login {}".format(STEAM_LOGIN)
         for mod in mods_to_download:
             logger.info("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
             steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
         steam_cmd_params += " +quit"
         call_steamcmd(steam_cmd_params)
-
 
     # Send Discord which mods are being updated.
     modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
@@ -196,7 +194,7 @@ def lowercase_mods(stagingPath):
 
 # SYMLINK STUFF
 def clean_mods(modset):
-    _path = os.path.join(ARMA_DIR, modset)
+    _path = os.path.join(PATH_SERVER, modset)
     if os.path.exists(_path) and os.path.isdir(_path):
         shutil.rmtree(_path)
     elif os.path.exists(_path) and not os.path.isdir(_path):
@@ -205,8 +203,8 @@ def clean_mods(modset):
 
 def symlink_mod(id: str, modpack: str, _modPath:str= None):
     if not _modPath:
-        _modPath = os.path.join(CHECK_DIR, id)
-    _destPath = os.path.join(ARMA_DIR, modpack, "@"+id)
+        _modPath = os.path.join(PATH_STAGING_MODS, id)
+    _destPath = os.path.join(PATH_SERVER, modpack, "@"+id)
     if os.path.exists(_destPath) and os.path.isdir(_destPath):
         shutil.rmtree(_destPath)
     symlink_from_to(_modPath, _destPath)
@@ -239,8 +237,8 @@ def symlink_from_to(_modPath, _destPath):
             logger.info("Processed {} {}".format(_modPath, name))
 
 def modify_mod_and_meta(id: str, modpack: str, name: str):
-    _modPath = os.path.join(CHECK_DIR, id)
-    _destPath = os.path.join(ARMA_DIR, modpack, "@"+id)
+    _modPath = os.path.join(PATH_STAGING_MODS, id)
+    _destPath = os.path.join(PATH_SERVER, modpack, "@"+id)
     for root, dirs, files in os.walk(_modPath):
         for name in files:
             if name == "mod.cpp" or name == "meta.cpp":
@@ -303,25 +301,27 @@ def get_online_players(servers):
 ##PENDING SERVERS
 def get_pending_mods():
     mod_ids = []
-    with open(".update") as update:
+    with open(f"{PATH_BASE}.update") as update:
         mod_ids = update.read().splitlines() 
     return mod_ids
 
 def get_pending_presets():
     mod_ids = []
-    with open(".update") as update:
+    with open(f"{PATH_BASE}.update") as update:
         mod_ids = update.read().splitlines() 
     if isinstance(mod_ids, str): 
         mod_ids = [mod_ids]
     presets = []
 
     if args.force:
-        for preset in os.listdir(CONFIG_DIR):
+        for preset in os.listdir(PATH_PRESETS):
             presets.append(preset)
+            if not os.path.isfile(f"{PATH_BASE}.update"):
+                Path(f"{PATH_BASE}.update").touch()
     else:
-        for preset in os.listdir(CONFIG_DIR):
+        for preset in os.listdir(PATH_PRESETS):
             if preset.endswith(".html"):
-                preset_mods = loadMods(os.path.join(CONFIG_DIR, preset))
+                preset_mods = loadMods(os.path.join(PATH_PRESETS, preset))
                 preset_mods_ids = []
                 for preset_mod in preset_mods:
                     preset_mods_ids.append(preset_mod['ID'])
@@ -337,7 +337,7 @@ def get_pending_servers():
     pending_mod_ids = get_pending_mods()
     print(get_pending_presets())
     pending_servers = []
-    serversJSON = json.load(open(SERVERS_JSON_FILE, "r"))
+    serversJSON = json.load(open(PANEL_SERVERS, "r"))
     for server in serversJSON:
         for server_mod in server["mods"]: #mods_ids
             if server_mod.replace("/","\\").split("\\")[-1] in pending_mod_ids:
@@ -358,7 +358,7 @@ def get_server_id(title):
 
 def stop_server(id):
     try:
-        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=6)
+        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
         if response.status_code == requests.codes.ok:
             return True
     except requests.exceptions.RequestException as e:  # This is the correct syntax
@@ -366,36 +366,34 @@ def stop_server(id):
    
 def start_server(id):
     try:
-        response = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=6)
+        response = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
         if response.status_code == requests.codes.ok:
             return True
     except requests.exceptions.RequestException as e:  # This is the correct syntax
         return False
     
-
-
 #RUN
 if __name__ == "__main__":
     config_logger()
     sys.excepthook = my_handler
 
     #Only one instance of the updater can run at a time, stop it running again mid-update.
-    if not os.path.isfile(".running"):
-        Path('.running').touch()
+    if not os.path.isfile(f"{PATH_BASE}.running"):
+        Path(f"{PATH_BASE}.update").touch()
         clean_logs()
         
         #For every preset html load in the mods that we need monitor updates on.
-        for file in os.listdir(CONFIG_DIR):
+        for file in os.listdir(PATH_PRESETS):
             if file.endswith(".html"):
                 _name = os.path.splitext(file)[0]
                 log("Reading Mod Preset ("+file+")")
-                mods = loadMods(os.path.join(CONFIG_DIR, file))
+                mods = loadMods(os.path.join(PATH_PRESETS, file))
                 update_mods(file, mods)
                 
-        lowercase_mods(CHECK_DIR) ##Needed for linux :S
+        lowercase_mods(PATH_STAGING_MODS) ##Needed for linux :S
 
         #Logging and notify
-        if os.path.isfile(".update"):
+        if os.path.isfile(f"{PATH_BASE}.update"):
             pending_servers = get_pending_servers()
             pending_presets = get_pending_presets()
 
@@ -404,8 +402,8 @@ if __name__ == "__main__":
             players = get_online_players(pending_servers)
             #Players online, only ever notify once that it can't update as this runs every 5 minutes.
             if players:
-                Path('.notified').touch()
-                if not os.path.isfile(".notified"):
+                Path(f"{PATH_BASE}.notified").touch()
+                if not os.path.isfile(f"{PATH_BASE}.notified"):
                     notify_players_online(players)
             else:  #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
                 #Attempt to stop all servers that involve pending modpacks
@@ -420,13 +418,13 @@ if __name__ == "__main__":
                 notify_stopping_server(stopped_servers)
  
                 #Symlink files of pending modpacks
-                for file in os.listdir(CONFIG_DIR):
+                for file in os.listdir(PATH_PRESETS):
                     if file.endswith(".html"):
                         if file in pending_presets: #Check that is a preset that needs to updated symlink, if so go for it.
                             _name = os.path.splitext(file)[0]
-                            log("Processing: {}".format(os.path.join(CONFIG_DIR, file)))
+                            log("Processing: {}".format(os.path.join(PATH_PRESETS, file)))
                             clean_mods(_name)
-                            mods = loadMods(os.path.join(CONFIG_DIR, file))
+                            mods = loadMods(os.path.join(PATH_PRESETS, file))
                             for m in mods:
                                 symlink_mod(m["ID"], _name)
                                 modify_mod_and_meta(m["ID"], _name, m["name"])
@@ -442,19 +440,19 @@ if __name__ == "__main__":
 
                 #Success, lets reset the script to be run again.
                 try:
-                    os.remove(".notified")
+                    os.remove(f"{PATH_BASE}.notified")
                 except FileNotFoundError:
                     pass
                     
                 try:
-                    os.remove(".update")
+                    os.remove(f"{PATH_BASE}.update")
                 except FileNotFoundError:
                     pass
         else: 
             log("Mods are up to date, and the server does not need to be restarted.")
 
         try:  
-            os.remove(".running")
+            os.remove(f"{PATH_BASE}.running")
         except FileNotFoundError:
             pass
     else:
