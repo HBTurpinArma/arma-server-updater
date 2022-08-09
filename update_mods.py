@@ -107,6 +107,7 @@ def get_workshop_version(mod_id):
     match = PATTERN.search(response)
     if match:
         return datetime.fromtimestamp(int(match.group(1)))
+    return datetime(1, 1, 1, 0, 0)
 
 def get_workshop_changelog(mod_id):
     PATTERN = re.compile(r"workshopAnnouncement.*?<p .*?\>(.*?)</p>", re.DOTALL)
@@ -116,6 +117,7 @@ def get_workshop_changelog(mod_id):
     match = PATTERN.search(response)
     if match:
         return match.group(1).replace("<br>", "\n");
+    return ""
 
 def get_current_version(mod_id, path):
     if os.path.isdir("{}/{}".format(path, mod_id)):
@@ -178,9 +180,9 @@ def update_mods(preset, mods):
     logger.info("The following have been downloaded: \n", mods_to_download)
     for index, mod in enumerate(mods_to_download):
         modEmbed = DiscordEmbed(title='[UPDATE] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='[View Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id={}) | [View Changelog](https://steamcommunity.com/sharedfiles/filedetails/changelog/{})'.format(mod["ID"],mod["ID"]), color='2121cc')
-        modEmbed.add_embed_field(name='Latest Changelog', value=str(get_workshop_changelog(mod["ID"])), inline=False)
-        modEmbed.add_embed_field(name='Previous Version', value=current_version)
-        modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])))
+        modEmbed.add_embed_field(name='Latest Changelog', value=str(get_workshop_changelog(mod["ID"])[:1000]+"...") or "", inline=False)
+        modEmbed.add_embed_field(name='Previous Version', value=current_version or "")
+        modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])) or "")
         modEmbed.set_footer(text='Required by ' + preset)
         modHook.add_embed(modEmbed)
         logger.info("Adding info into webhook for {} (@{})".format(mod["name"], mod["ID"]))
@@ -271,24 +273,30 @@ def notify_players_online(players):
     response = playerHook.execute()
 
 def notify_stopping_server(pending):
-    playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    playerEmbed = DiscordEmbed(title='[INFO] The servers are being stopped.', description=f'There are {len(pending)} pending servers awaiting updates. These are empty and will be stopped.', color='2121dd')
+    serverHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+    serverEmbed = DiscordEmbed(title='[INFO] The servers are being stopped.', description=f'There are {len(pending)} pending servers awaiting updates. These are empty and will be stopped.', color='2121dd')
     server_names = ""
     for server in pending:
         server_names += server['title'] + "\n"
-    playerEmbed.add_embed_field(name="Pending Servers", value=server_names)
-    playerHook.add_embed(playerEmbed)
-    response = playerHook.execute()
+    serverEmbed.add_embed_field(name="Pending Servers", value=server_names)
+    serverHook.add_embed(serverEmbed)
+    response = serverHook.execute()
+
+def notify_symlink():
+    symlinkHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+    symlinkEmbed = DiscordEmbed(title='[INFO] Updated mod files have been symlinked over to the servers.', description=f'', color='21dd21')
+    symlinkHook.add_embed(symlinkEmbed)
+    response = symlinkHook.execute()
 
 def notify_starting_server(pending):
-    playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    playerEmbed = DiscordEmbed(title='[INFO] The servers are being started.', description=f'These servers have been updated and are now starting...', color='21dd21')
+    serverHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+    serverEmbed = DiscordEmbed(title='[INFO] The servers are being started.', description=f'These servers have been updated and are now starting...', color='2121dd')
     server_names = ""
     for server in pending:
         server_names += server['title'] + "\n"
-    playerEmbed.add_embed_field(name="Starting Servers", value=server_names)
-    playerHook.add_embed(playerEmbed)
-    response = playerHook.execute()
+    serverEmbed.add_embed_field(name="Starting Servers", value=server_names)
+    serverHook.add_embed(serverEmbed)
+    response = serverHook.execute()
 
 def get_online_players(servers):
     players = {}
@@ -433,6 +441,7 @@ if __name__ == "__main__":
                             for m in mods:
                                 symlink_mod(m["ID"], _name)
                                 modify_mod_and_meta(m["ID"], _name, m["name"])
+                notify_symlink()
 
                 #Attempt to start all servers that had been stopped previously
                 for stopped_server in stopped_servers:
