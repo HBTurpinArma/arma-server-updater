@@ -441,7 +441,6 @@ if __name__ == "__main__":
                             for m in mods:
                                 symlink_mod(m["ID"], _name)
                                 modify_mod_and_meta(m["ID"], _name, m["name"])
-                notify_symlink()
 
                 #Attempt to start all servers that had been stopped previously
                 for stopped_server in stopped_servers:
