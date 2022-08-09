@@ -175,6 +175,7 @@ def update_mods(preset, mods):
 
     # Send Discord which mods are being updated.
     modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+    logger.info("The following have been downloaded: \n", mods_to_download)
     for index, mod in enumerate(mods_to_download):
         modEmbed = DiscordEmbed(title='[UPDATE] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='[View Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id={}) | [View Changelog](https://steamcommunity.com/sharedfiles/filedetails/changelog/{})'.format(mod["ID"],mod["ID"]), color='2121cc')
         modEmbed.add_embed_field(name='Latest Changelog', value=str(get_workshop_changelog(mod["ID"])), inline=False)
@@ -182,6 +183,7 @@ def update_mods(preset, mods):
         modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])))
         modEmbed.set_footer(text='Required by ' + preset)
         modHook.add_embed(modEmbed)
+        logger.info("Adding info into webhook for {} (@{})".format(mod["name"], mod["ID"]))
         if (index+1) % 10 == 0: #There is a limitation to webhook to being 10 max embeds, so we have to send multiple messages. I don't want to send a whole webhook per mod due to potential spam issues also.
             response = modHook.execute()
             modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
