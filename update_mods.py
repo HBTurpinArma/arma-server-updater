@@ -174,10 +174,11 @@ def update_mods(preset, mods):
             steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
         steam_cmd_params += " +quit"
         call_steamcmd(steam_cmd_params)
+        #logger.info("The following have been downloaded: \n", mods_to_download)
 
     # Send Discord which mods are being updated.
     modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    logger.info("The following have been downloaded: \n", mods_to_download)
+    
     for index, mod in enumerate(mods_to_download):
         modEmbed = DiscordEmbed(title='[UPDATE] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='[View Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id={}) | [View Changelog](https://steamcommunity.com/sharedfiles/filedetails/changelog/{})'.format(mod["ID"],mod["ID"]), color='2121cc')
         modEmbed.add_embed_field(name='Latest Changelog', value=str(get_workshop_changelog(mod["ID"])[:1000]+"...") or "", inline=False)
@@ -219,6 +220,7 @@ def symlink_mod(id: str, modpack: str, _modPath:str= None):
 def symlink_from_to(_modPath, _destPath):
     os.makedirs(os.path.join(_destPath, "addons"), exist_ok=True)
     os.makedirs(os.path.join(_destPath, "keys"), exist_ok=True)
+    ignore_list = ["optional","optionals","Optional","Optionals","compats","Compats","compat","Compat"]
     for root, dirs, files in os.walk(_modPath):
         for name in files:
             if name.endswith(".dll") or name.endswith(".so"):
@@ -232,7 +234,7 @@ def symlink_from_to(_modPath, _destPath):
                 except FileExistsError:
                     pass
             elif name.endswith(".pbo") or name.endswith(".ebo") or name.endswith(".bisign"):
-                if "optional" in root or "optionals" in root or "Optional" in root or "Optionals" in root:
+                if any(ignore_word in root for ignore_word in ignore_list):
                     pass
                 else:
                     try:
