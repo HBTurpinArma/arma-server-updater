@@ -1,0 +1,1 @@
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe" "update_game.py"
