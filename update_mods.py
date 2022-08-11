@@ -111,13 +111,15 @@ def get_workshop_version(mod_id):
 
 def get_workshop_changelog(mod_id):
     PATTERN = re.compile(r"workshopAnnouncement.*?<p .*?\>(.*?)</p>", re.DOTALL)
+    CLEANHTML = re.compile('<.*?>')
     WORKSHOP_CHANGELOG_URL = "https://steamcommunity.com/sharedfiles/filedetails/changelog"
     response = request.urlopen("{}/{}".format(WORKSHOP_CHANGELOG_URL, mod_id)).read()
     response = response.decode("utf-8")
     match = PATTERN.search(response)
     if match:
-        return match.group(1).replace("<br>", "\n");
+        return re.sub(CLEANHTML, '', match.group(1).replace("<br>", "\n").replace("</b>", "\n"))
     return ""
+
 
 def get_current_version(mod_id, path):
     if os.path.isdir("{}/{}".format(path, mod_id)):
