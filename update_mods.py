@@ -139,68 +139,44 @@ def is_updated(mod_id, path):
         return (current_version > workshop_version)  # do we have the most recent file?
     return False
 
-def update_mods(preset, mods):
+def check_for_updates():
     mods_to_download = []
+    for file in os.listdir(PATH_PRESETS):
+        if file.endswith(".html"):
+            _name = os.path.splitext(file)[0]
+            log("Reading Mod Preset ("+file+")")
+            mods = loadMods(os.path.join(PATH_PRESETS, file))
+            for mod in mods:
+                logger.info("\n")
+                if os.path.isdir("{}/{}".format(PATH_STAGING_MODS, mod["ID"])):
+                    if not is_updated(mod["ID"], PATH_STAGING_MODS):
+                        logger.info("Update required for \"{}\" ({})".format(mod["name"], mod["ID"]))
+                    else:
+                        logger.info("No update required for \"{}\" ({})... SKIPPING".format(mod["name"], mod["ID"]))
+                        if not args.force: 
+                            continue
+                else:
+                    logger.info("No file found, grabbing mod \"{}\" ({})".format(mod["name"], mod["ID"]))
+
+                if mod not in mods_to_download:
+                    mods_to_download.append(mod)
+
+    return mods_to_download
+
+def update_mods(mods):
+    steam_cmd_params = " +force_install_dir {}".format(PATH_STAGING)
+    steam_cmd_params += " +login {}".format(STEAM_LOGIN)
     for mod in mods:
-        logger.info("\n")
-        # Check if mod needs to be updated
-        current_version = str(get_current_version(mod["ID"], PATH_STAGING_MODS))
-        if os.path.isdir("{}/{}".format(PATH_STAGING_MODS, mod["ID"])):
-            if not is_updated(mod["ID"], PATH_STAGING_MODS):
-                logger.info("Update required for \"{}\" ({})".format(mod["name"], mod["ID"]))
-                # shutil.rmtree(path)  # Delete current version if it exists.
-            else:
-                logger.info("No update required for \"{}\" ({})... SKIPPING".format(mod["name"], mod["ID"]))
-                continue
-        else:
-            logger.info("No file found, grabbing mod \"{}\" ({})".format(mod["name"], mod["ID"]))
+        logger.info("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
+        steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
+    steam_cmd_params += " +quit"
+    call_steamcmd(steam_cmd_params)
+    notify_updated_mods(mods)
 
 
-        mods_to_download.append(mod)
-
-        #Add mods to the update file to be read everytime we need to attempt to restart servers
-        if not os.path.isfile(f"{PATH_BASE}.update"):
-            Path(f"{PATH_BASE}.update").touch()
-        with open(f"{PATH_BASE}.update", "a") as update_file:
-            update_file.writelines(mod["ID"]+"\n")
-
-    # Download the mod via steamcmd.
-    if mods_to_download:
-        log("Attempting to download the following mods with steamcmd:")
-        steam_cmd_params = " +force_install_dir {}".format(PATH_STAGING)
-        steam_cmd_params += " +login {}".format(STEAM_LOGIN)
-        for mod in mods_to_download:
-            logger.info("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
-            steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
-        steam_cmd_params += " +quit"
-        call_steamcmd(steam_cmd_params)
-        #logger.info("The following have been downloaded: \n", mods_to_download)
-
-    # Send Discord which mods are being updated.
-    modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    
-    webhookCount = 0
-    webhookSize = 0
-    for mod in mods_to_download:
-        modEmbed = DiscordEmbed(title='[UPDATE] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='[View Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id={}) | [View Changelog](https://steamcommunity.com/sharedfiles/filedetails/changelog/{})'.format(mod["ID"],mod["ID"]), color='2121cc')
-        workshopChangelog = get_workshop_changelog(mod["ID"])[:1000]+"..."
-        modEmbed.add_embed_field(name='Latest Changelog', value=str(workshopChangelog) or "", inline=False)
-        modEmbed.add_embed_field(name='Previous Version', value=current_version or "")
-        modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])) or "")
-        modEmbed.set_footer(text='Required by ' + preset)
-        modHook.add_embed(modEmbed)
-        logger.info("Adding info into webhook for {} (@{})".format(mod["name"], mod["ID"]))
-        #Obtain current size of embed for limit checking
-        webhookSize+=len(workshopChangelog)
-        webhookCount+=1
-        if (webhookCount) % 10 == 0 or webhookSize > 5500: #There is a limitation to webhook to being 10 max embeds, and a size limit of 6000, we save 500 space for rest of text.
-            response = modHook.execute()
-            modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-            webhookCount = 0
-            webhookSize = 0
-    response = modHook.execute()
 
 
+# SYMLINK STUFF
 def lowercase_mods(stagingPath):
     for path, subdirs, files in os.walk(stagingPath):
         for name in files:
@@ -208,7 +184,6 @@ def lowercase_mods(stagingPath):
             new_name = os.path.join(path,name.lower())
             os.rename(file_path, new_name)
 
-# SYMLINK STUFF
 def clean_mods(modset):
     _path = os.path.join(PATH_SERVER, modset)
     if os.path.exists(_path) and os.path.isdir(_path):
@@ -269,7 +244,7 @@ def modify_mod_and_meta(id: str, modpack: str, name: str):
                 logger.info("Processed {} {}".format(_modPath, name))
 
 
-##ONLINE PLAYERS
+##DISCORD WEBHOOK PLAYERS
 def notify_players_online(players):
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     playerEmbed = DiscordEmbed(title='[ERROR] The servers are being updated.', description='The following users are online.', color='dd2121')
@@ -308,62 +283,55 @@ def notify_starting_server(pending):
     serverHook.add_embed(serverEmbed)
     response = serverHook.execute()
 
-def get_online_players(servers):
-    players = {}
-    for server in servers:
-        try:
-            _players = (a2s.players(("127.0.0.1", int(server["port"]) + 1,)))
-            if len(_players) > 0:
-                logger.info(f"There are players on server: {server['title']}")
-                players[server['title']] = _players
-        except Exception:
-            pass
-    return players
+def notify_updated_mods(mods):
+    modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+    webhookCount = 0
+    webhookSize = 0
+    for mod in mods:
+        modEmbed = DiscordEmbed(title='[UPDATE] @{} ({}) has been updated.'.format(mod["name"], mod["ID"]), description='[View Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id={}) | [View Changelog](https://steamcommunity.com/sharedfiles/filedetails/changelog/{})'.format(mod["ID"],mod["ID"]), color='2121cc')
+        workshopChangelog = get_workshop_changelog(mod["ID"])[:1000]+"..."
+        modEmbed.add_embed_field(name='Latest Changelog', value=str(workshopChangelog) or "", inline=False)
+        modEmbed.add_embed_field(name='Previous Version', value=str(get_current_version(mod["ID"], PATH_STAGING_MODS) or ""))
+        modEmbed.add_embed_field(name='Workshop Version', value=str(get_workshop_version(mod["ID"])) or "")
+        #modEmbed.set_footer(text='Required by ' + preset)
+        modHook.add_embed(modEmbed)
+        #Obtain current size of embed for limit checking
+        webhookSize+=len(workshopChangelog)
+        webhookCount+=1
+        logger.info("Adding info into webhook for {} (@{}) | Count: {} | Size: {} | Total: {}".format(mod["name"], mod["ID"],webhookCount, len(workshopChangelog), webhookSize))
+        if (webhookCount) % 10 == 0 or webhookSize > 4000: #There is a limitation to webhook to being 10 max embeds, and a size limit of 6000, we save 2000 space for rest of text.
+            response = modHook.execute()
+            modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
+            webhookCount = 0
+            webhookSize = 0
+    response = modHook.execute()
 
 
 ##PENDING SERVERS
-def get_pending_mods():
-    mod_ids = []
-    with open(f"{PATH_BASE}.update") as update:
-        mod_ids = update.read().splitlines() 
-    return mod_ids
-
-def get_pending_presets():
-    mod_ids = []
-    with open(f"{PATH_BASE}.update") as update:
-        mod_ids = update.read().splitlines() 
-    if isinstance(mod_ids, str): 
-        mod_ids = [mod_ids]
+def get_pending_presets(mods):
     presets = []
+    for preset in os.listdir(PATH_PRESETS):
+        if preset.endswith(".html"):
+            preset_mods = loadMods(os.path.join(PATH_PRESETS, preset))
+            preset_mods_ids = []
+            for preset_mod in preset_mods:
+                preset_mods_ids.append(preset_mod["ID"])
 
-    if args.force:
-        for preset in os.listdir(PATH_PRESETS):
-            presets.append(preset)
-            if not os.path.isfile(f"{PATH_BASE}.update"):
-                Path(f"{PATH_BASE}.update").touch()
-    else:
-        for preset in os.listdir(PATH_PRESETS):
-            if preset.endswith(".html"):
-                preset_mods = loadMods(os.path.join(PATH_PRESETS, preset))
-                preset_mods_ids = []
-                for preset_mod in preset_mods:
-                    preset_mods_ids.append(preset_mod['ID'])
-
-                for mod_id in mod_ids:
-                    if mod_id in preset_mods_ids:
-                        if preset not in presets:
-                            presets.append(preset)
+            for mod in mods:
+                if mod["ID"] in preset_mods_ids:
+                    if preset not in presets:
+                        presets.append(preset)
     return presets
 
-def get_pending_servers():
-    pending_presets = get_pending_presets()
-    pending_mod_ids = get_pending_mods()
-    print(get_pending_presets())
+def get_pending_servers(mods, pending_presets):
+    pending_mods = []
     pending_servers = []
+    for mod in mods:
+        pending_mods.append(mod["ID"])
     serversJSON = json.load(open(PANEL_SERVERS, "r"))
     for server in serversJSON:
         for server_mod in server["mods"]: #mods_ids
-            if server_mod.replace("/","\\").split("\\")[-1] in pending_mod_ids:
+            if server_mod.replace("/","\\").split("\\")[-1] in pending_mods: #Technically could just use the presets check...
                 if server not in pending_servers:
                     pending_servers.append(server)
         for server_mod in server["mods"]: #presets
@@ -378,6 +346,18 @@ def get_server_id(title):
     for a in charMap:
         title = title.replace(a,charMap[a])
     return title
+
+def get_online_players(servers):
+    players = {}
+    for server in servers:
+        try:
+            _players = (a2s.players(("127.0.0.1", int(server["port"]) + 1,)))
+            if len(_players) > 0:
+                logger.info(f"There are players on server: {server['title']}")
+                players[server['title']] = _players
+        except Exception:
+            pass
+    return players
 
 def stop_server(id):
     try:
@@ -405,31 +385,29 @@ if __name__ == "__main__":
         Path(f"{PATH_BASE}.running").touch()
         clean_logs()
         
-        #For every preset html load in the mods that we need monitor updates on.
-        for file in os.listdir(PATH_PRESETS):
-            if file.endswith(".html"):
-                _name = os.path.splitext(file)[0]
-                log("Reading Mod Preset ("+file+")")
-                mods = loadMods(os.path.join(PATH_PRESETS, file))
-                update_mods(file, mods)
-                
-        lowercase_mods(PATH_STAGING_MODS) ##Needed for linux :S
+        mods = check_for_updates()
+        if mods:
+            #Check which presets are affected from updated mods as the whole preset gets symlinked.
+            pending_presets = get_pending_presets(mods)
+            log("The following mod presets need to be symlinked:")
+            for preset in pending_presets:
+                logger.info(preset)
 
-        #Logging and notify
-        if os.path.isfile(f"{PATH_BASE}.update"):
-            pending_servers = get_pending_servers()
-            pending_presets = get_pending_presets()
+            #Check which servers are affected as a result of using either a preset / mod for the pending lists.
+            pending_servers = get_pending_servers(mods, pending_presets)
+            log("The following servers need to be restarted:")
+            for server in pending_servers:
+                logger.info(server["title"])
 
-            log("Attempting to update servers:")
-
+            #Players online, only ever notify once that it can't update as this runs every X minutes.
             players = get_online_players(pending_servers)
-            #Players online, only ever notify once that it can't update as this runs every 5 minutes.
             if players:
                 Path(f"{PATH_BASE}.notified").touch()
                 if not os.path.isfile(f"{PATH_BASE}.notified"):
                     notify_players_online(players)
-            else:  #Players no longer online, so we can stop the service and copy over/symlink the updated mod folders.
-                #Attempt to stop all servers that involve pending modpacks
+            else:  
+                #Players no longer online, so we can stop the servers and copy over/symlink the updated mod folders.
+                log("Attempting to stop servers:")
                 stopped_servers = []
                 for pending_server in pending_servers:
                     success = stop_server(get_server_id(pending_server["title"]))
@@ -440,7 +418,12 @@ if __name__ == "__main__":
                         logger.info(pending_server["title"] + " (FAILED) Server could be offline.")
                 notify_stopping_server(stopped_servers)
  
+                #Download the mods now that servers are offline and then symlink them.
+                log("Attempting to update mods:")
+                update_mods(mods)
+
                 #Symlink files of pending modpacks
+                log("Attempting to symlink mods to servers:")
                 for file in os.listdir(PATH_PRESETS):
                     if file.endswith(".html"):
                         if file in pending_presets: #Check that is a preset that needs to updated symlink, if so go for it.
@@ -453,6 +436,7 @@ if __name__ == "__main__":
                                 modify_mod_and_meta(m["ID"], _name, m["name"])
 
                 #Attempt to start all servers that had been stopped previously
+                log("Attempting to start servers:")
                 for stopped_server in stopped_servers:
                     success = start_server(get_server_id(stopped_server["title"]))
                     if success:
@@ -466,17 +450,15 @@ if __name__ == "__main__":
                     os.remove(f"{PATH_BASE}.notified")
                 except FileNotFoundError:
                     pass
-                    
-                try:
-                    os.remove(f"{PATH_BASE}.update")
-                except FileNotFoundError:
-                    pass
         else: 
+            #No updates were required.
             log("Mods are up to date, and the server does not need to be restarted.")
 
+        #Allow script to be rerun.
         try:  
             os.remove(f"{PATH_BASE}.running")
         except FileNotFoundError:
             pass
     else:
+        #Only allow one singular instance of the script to be running at one time, if not error out.
         raise (RuntimeError("Script appears to be running already. If this is incorrect please remove .running file."))
