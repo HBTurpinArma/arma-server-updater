@@ -402,7 +402,7 @@ if __name__ == "__main__":
 
     #Only one instance of the updater can run at a time, stop it running again mid-update.
     if not os.path.isfile(f"{PATH_BASE}.running"):
-        Path(f"{PATH_BASE}.update").touch()
+        Path(f"{PATH_BASE}.running").touch()
         clean_logs()
         
         #For every preset html load in the mods that we need monitor updates on.
