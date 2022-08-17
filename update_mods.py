@@ -111,7 +111,7 @@ def get_workshop_version(mod_id):
 
 def get_workshop_changelog(mod_id):
     PATTERN = re.compile(r"workshopAnnouncement.*?<p .*?\>(.*?)</p>", re.DOTALL)
-    CLEANHTML = re.compile('<.*?>')
+    CLEANHTML = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
     WORKSHOP_CHANGELOG_URL = "https://steamcommunity.com/sharedfiles/filedetails/changelog"
     response = request.urlopen("{}/{}".format(WORKSHOP_CHANGELOG_URL, mod_id)).read()
     response = response.decode("utf-8")
@@ -249,11 +249,11 @@ def modify_mod_and_meta(id: str, modpack: str, name: str):
 ##DISCORD WEBHOOK PLAYERS
 def notify_players_online(players):
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
-    playerEmbed = DiscordEmbed(title='[ERROR] The servers are being updated.', description='The following users are online.', color='dd2121')
+    playerEmbed = DiscordEmbed(title='[ERROR] The servers are pending updates but are not empty.', description='The following users are online.', color='dd2121')
     for k, v in players.items():
         p = ""
         for player in v:
-            name = re.findall("(?:name=[\'\"])([\w\[\]\s]+)(?:')", str(player))[0]
+            name = re.findall("(?<=name=').*?(?=',)", str(player))[0]
             p += name + "\n"
         playerEmbed.add_embed_field(name=k, value=p)
     playerHook.add_embed(playerEmbed)
@@ -354,11 +354,12 @@ def get_online_players(servers):
     for server in servers:
         try:
             _players = (a2s.players(("127.0.0.1", int(server["port"]) + 1,)))
+            logger.info(f"There are {len(_players)} players on server: {server['title']}")
+            logger.info(_players)
             if len(_players) > 0:
-                logger.info(f"There are players on server: {server['title']}")
                 players[server['title']] = _players
         except Exception:
-            pass
+            logger.info(f"{server['title']} is offline or cannot be found.")
     return players
 
 def stop_server(id):
@@ -403,6 +404,7 @@ if __name__ == "__main__":
 
             #Players online, only ever notify once that it can't update as this runs every X minutes.
             players = get_online_players(pending_servers)
+            log("Checking the servers to see if they are empty:")
             if players:
                 Path(f"{PATH_BASE}.notified").touch()
                 if not os.path.isfile(f"{PATH_BASE}.notified"):
