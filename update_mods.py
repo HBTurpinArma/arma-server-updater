@@ -320,7 +320,7 @@ def get_pending_presets(mods):
                 preset_mods_ids.append(preset_mod["ID"])
 
             for mod in mods:
-                if mod["ID"] in preset_mods_ids:
+                if mod["ID"] in preset_mods_ids or args.force:
                     if preset not in presets:
                         presets.append(preset)
     return presets
@@ -383,7 +383,9 @@ def start_server(id):
 if __name__ == "__main__":
     config_logger()
     sys.excepthook = my_handler
-
+    if args.force:
+        logger.info("Forcing is enabled, all mods will be symlinked.")
+        
     #Only one instance of the updater can run at a time, stop it running again mid-update.
     if not os.path.isfile(f"{PATH_BASE}.running"):
         Path(f"{PATH_BASE}.running").touch()
