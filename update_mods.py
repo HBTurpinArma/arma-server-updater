@@ -230,7 +230,7 @@ def symlink_from_to(_modPath, _destPath):
                 continue
             logger.info("Processed {} {}".format(_modPath, name))
 
-def modify_mod_and_meta(id: str, modpack: str, name: str):
+def modify_mod_and_meta(id: str, modpack: str, modName: str):
     _modPath = os.path.join(PATH_STAGING_MODS, id)
     _destPath = os.path.join(PATH_SERVER, modpack, "@"+id)
     for root, dirs, files in os.walk(_modPath):
@@ -240,7 +240,7 @@ def modify_mod_and_meta(id: str, modpack: str, name: str):
                     _data = file.readlines()
                 for i, l in enumerate(_data):
                     if l.startswith("name"):
-                        _data[i] = f'name="{id}";\n'
+                        _data[i] = f'name="{modName}";\n'
                 with open(os.path.join(_destPath, name), "w", encoding="utf-8") as file:
                     file.writelines(_data)
                 logger.info("Processed {} {}".format(_modPath, name))
