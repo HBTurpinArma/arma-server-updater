@@ -365,9 +365,11 @@ def get_online_players(servers):
 
 def stop_server(id):
     try:
-        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
+        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=0.0000000001)
         if response.status_code == requests.codes.ok:
             return True
+    except requests.exceptions.ReadTimeout: #Instant timeout for stopping, it 
+        return True
     except requests.exceptions.RequestException as e:  # This is the correct syntax
         return False
    
