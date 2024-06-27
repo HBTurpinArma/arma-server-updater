@@ -332,14 +332,15 @@ def get_pending_servers(mods, pending_presets):
         pending_mods.append(mod["ID"])
     serversJSON = json.load(open(PANEL_SERVERS, "r"))
     for server in serversJSON:
-        for server_mod in server["mods"]: #mods_ids
-            if server_mod.replace("/","\\").split("\\")[-1] in pending_mods: #Technically could just use the presets check...
-                if server not in pending_servers:
-                    pending_servers.append(server)
-        for server_mod in server["mods"]: #presets
-            if server_mod.replace("/","\\").split("\\")[0]+".html" in pending_presets:
-                if server not in pending_servers:
-                    pending_servers.append(server)
+        if server['game_selected'] == "arma3":
+            for server_mod in server["mods"]: #mods_ids
+                if server_mod.replace("/","\\").split("\\")[-1] in pending_mods: #Technically could just use the presets check...
+                    if server not in pending_servers:
+                        pending_servers.append(server)
+            for server_mod in server["mods"]: #presets
+                if server_mod.replace("/","\\").split("\\")[0]+".html" in pending_presets:
+                    if server not in pending_servers:
+                        pending_servers.append(server)
     return pending_servers
 
 def get_server_id(title):
