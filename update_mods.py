@@ -344,7 +344,7 @@ def get_pending_servers(mods, pending_presets):
 
 def get_server_id(title):
     title = title.lstrip(' ').rstrip(' ') #remove leading whitespace and trailing whitespace
-    charMap = json.loads('{"$":"dollar","%":"percent","&":"and","<":"less",">":"greater","|":"or","¢":"cent","£":"pound"," ":"-",".":"-","/":""}')
+    charMap = json.loads('{"$":"dollar","%":"percent","&":"and","<":"less",">":"greater","|":"or","¢":"cent","£":"pound"," ":"-",".":"-","/":"","#":""}')
     for a in charMap:
         title = title.replace(a,charMap[a])
     return title
