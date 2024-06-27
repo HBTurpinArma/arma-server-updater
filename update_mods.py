@@ -313,6 +313,7 @@ def notify_updated_mods(mods):
 def get_pending_presets(mods):
     presets = []
     for preset in os.listdir(PATH_PRESETS):
+        
         if preset.endswith(".html"):
             preset_mods = loadMods(os.path.join(PATH_PRESETS, preset))
             preset_mods_ids = []
@@ -354,7 +355,7 @@ def get_online_players(servers):
     players = {}
     for server in servers:
         try:
-            _players = (a2s.players(("127.0.0.1", int(server["port"]) + 1,)))
+            _players = (a2s.players(("127.0.0.1", int(server["port"]) + 1)))
             logger.info(f"There are {len(_players)} players on server: {server['title']}")
             logger.info(_players)
             if len(_players) > 0:
