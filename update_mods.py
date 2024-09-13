@@ -21,7 +21,7 @@ import argparse
 ##ADDITIONAL ARGUMENTS FOR SCRIPT
 parser = argparse.ArgumentParser(description="", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-f", "--force", action="store_true", help="force an update of every preset and re-symlink.")
-parser.add_argument("-d", "--discord", action="store_true", help="enables use of the discord webhook to notify actions")
+parser.add_argument("-d", "--discord", action="store_true", help="disables use of the discord webhook to notify actions")
 args = parser.parse_args()
 
 ##CONFIGSTART
@@ -248,6 +248,7 @@ def modify_mod_and_meta(id: str, modpack: str, modName: str):
 
 ##DISCORD WEBHOOK PLAYERS
 def notify_players_online(players):
+    if args.discord: return
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     playerEmbed = DiscordEmbed(title='[ERROR] The servers are pending updates but are not empty.', description='The following users are online.', color='dd2121')
     for k, v in players.items():
@@ -260,6 +261,7 @@ def notify_players_online(players):
     response = playerHook.execute()
 
 def notify_stopping_server(pending):
+    if args.discord: return
     serverHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     serverEmbed = DiscordEmbed(title='[INFO] The servers are being stopped.', description=f'There are {len(pending)} pending servers awaiting updates. These are empty and will be stopped.', color='2121dd')
     server_names = ""
@@ -270,12 +272,14 @@ def notify_stopping_server(pending):
     response = serverHook.execute()
 
 def notify_symlink():
+    if args.discord: return
     symlinkHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     symlinkEmbed = DiscordEmbed(title='[INFO] Updated mod files have been symlinked over to the servers.', description=f'', color='21dd21')
     symlinkHook.add_embed(symlinkEmbed)
     response = symlinkHook.execute()
 
 def notify_starting_server(pending):
+    if args.discord: return
     serverHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     serverEmbed = DiscordEmbed(title='[INFO] The servers are being started.', description=f'These servers have been updated and are now starting...', color='2121dd')
     server_names = ""
@@ -286,6 +290,7 @@ def notify_starting_server(pending):
     response = serverHook.execute()
 
 def notify_updated_mods(mods):
+    if args.discord: return
     modHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     webhookCount = 0
     webhookSize = 0
@@ -356,12 +361,13 @@ def get_online_players(servers):
     for server in servers:
         try:
             _players = (a2s.players(("127.0.0.1", int(server["port"]) + 1)))
-            logger.info(f"There are {len(_players)} players on server: {server['title']}")
+            logger.info(f"There are {len(_players)} players on server: {server['title']} ({server['uid']})")
             logger.info(_players)
             if len(_players) > 0:
                 players[server['title']] = _players
         except Exception:
-            logger.info(f"{server['title']} is offline or cannot be found.")
+            pass
+            # logger.info(f"{server['title']} is offline or cannot be found.")
     return players
 
 def stop_server(id):
@@ -415,15 +421,14 @@ if __name__ == "__main__":
                     notify_players_online(players)
             else:  
                 #Players no longer online, so we can stop the servers and copy over/symlink the updated mod folders.
-                log("Attempting to stop servers:")
                 stopped_servers = []
                 for pending_server in pending_servers:
-                    success = stop_server(get_server_id(pending_server["title"]))
+                    success = stop_server(pending_server["uid"])
                     if success:
-                        logger.info(pending_server["title"] + " (SUCCESS) Server stop command recieved.")
+                        logger.info(f"{pending_server['title']} ({pending_server['uid']}) (SUCCESS) Server stop command recieved.")
                         stopped_servers.append(pending_server)
                     else:
-                        logger.info(pending_server["title"] + " (FAILED) Server could be offline.")
+                        logger.info(f"{pending_server['title']} ({pending_server['uid']}) (FAILED) Server could be offline.")
                 notify_stopping_server(stopped_servers)
  
                 #Download the mods now that servers are offline and then symlink them.
@@ -446,11 +451,11 @@ if __name__ == "__main__":
                 #Attempt to start all servers that had been stopped previously
                 log("Attempting to start servers:")
                 for stopped_server in stopped_servers:
-                    success = start_server(get_server_id(stopped_server["title"]))
+                    success = start_server(stopped_server["uid"])
                     if success:
-                        logger.info(pending_server["title"] + " (SUCCESS) Server start command recieved.")
+                        logger.info(f"{pending_server['title']} ({pending_server['uid']}) (SUCCESS) Server start command recieved.")
                     else:
-                        logger.info(pending_server["title"] + " (FAILED) Potential issue, server could not be started.")
+                        logger.info(f"{pending_server['title']} ({pending_server['uid']}) (FAILED) Potential issue, server could not be started.")
                 notify_starting_server(stopped_servers)
 
                 #Success, lets reset the script to be run again.
