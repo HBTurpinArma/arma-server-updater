@@ -17,14 +17,18 @@ from dotenv import dotenv_values
 import requests
 from pathlib import Path
 import argparse
+import asyncio
+import aiohttp
 
-##ADDITIONAL ARGUMENTS FOR SCRIPT
+#######################################################
+
 parser = argparse.ArgumentParser(description="", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-f", "--force", action="store_true", help="force an update of every preset and re-symlink.")
 parser.add_argument("-d", "--discord", action="store_true", help="disables use of the discord webhook to notify actions")
 args = parser.parse_args()
 
-##CONFIGSTART
+#######################################################
+
 config = dotenv_values(".env")
 
 SERVER_ID = "233780"
@@ -35,18 +39,16 @@ PATH_STAGING = config["PATH_STAGING"]
 PATH_STAGING_MODS = config["PATH_STAGING_MODS"]
 PATH_PRESETS = config["PATH_PRESETS"]
 PATH_SERVER = config["PATH_SERVER"]
-
 STEAM_LOGIN = config["STEAM_LOGIN"]
 STEAM_PASSWORD = config["STEAM_PASSWORD"] #NOT USED - BUT MAY WANT TO IF CREDENTIAL CACHING BECOMES A PROBLEM
-
 PANEL_SERVERS = config["PANEL_SERVERS"]
 PANEL_IP = config["PANEL_IP"]
 PANEL_LOGIN = config["PANEL_LOGIN"]
 PANEL_PASSWORD = config["PANEL_PASSWORD"]
-
 DISCORD_WEBHOOK = config["DISCORD_WEBHOOK"]
 
-##LOGGING STUFF
+#######################################################
+
 def my_handler(type, value, tb):
     for line in traceback.TracebackException(type, value, tb).format(chain=True):
         logging.exception(line)
@@ -93,21 +95,20 @@ def clean_logs():
                     os.remove(os.path.join(root, name))
     pass
 
+#######################################################
 
-##MOD UPDATING
-def call_steamcmd(params):
-    os.system("{} {}".format("steamcmd", params))
-    # logger.info("{} {}".format("steamcmd", params))
-
-def get_workshop_version(mod_id):
+async def get_workshop_version(mod_id):
     PATTERN = re.compile(r"workshopAnnouncement.*?<p id=\"(\d+)\">", re.DOTALL)
     WORKSHOP_CHANGELOG_URL = "https://steamcommunity.com/sharedfiles/filedetails/changelog"
-    response = request.urlopen("{}/{}".format(WORKSHOP_CHANGELOG_URL, mod_id)).read()
-    response = response.decode("utf-8")
-    match = PATTERN.search(response)
-    if match:
-        return datetime.fromtimestamp(int(match.group(1)))
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"{WORKSHOP_CHANGELOG_URL}/{mod_id}") as response:
+            response_text = await response.text()
+            match = PATTERN.search(response_text)
+            if match:
+                return datetime.fromtimestamp(int(match.group(1)))
     return datetime(1, 1, 1, 0, 0)
+
 
 def get_workshop_changelog(mod_id):
     PATTERN = re.compile(r"workshopAnnouncement.*?<p .*?\>(.*?)</p>", re.DOTALL)
@@ -121,18 +122,18 @@ def get_workshop_changelog(mod_id):
     return ""
 
 
-def get_current_version(mod_id, path):
+async def get_current_version(mod_id, path):
     if os.path.isdir("{}/{}".format(path, mod_id)):
         return datetime.fromtimestamp(os.path.getmtime("{}/{}/meta.cpp".format(path, mod_id)))
     return datetime(1, 1, 1, 0, 0)
 
-def is_updated(mod_id, path):
-    workshop_version = get_workshop_version(mod_id)
-    logger.info(" Checking https://steamcommunity.com/sharedfiles/filedetails/changelog/{}".format(mod_id))
-    logger.info("   Latest Version Found: {}".format(workshop_version))
-    current_version = get_current_version(mod_id, path)
-    logger.info(" Checking {}{}".format(path, mod_id))
-    logger.info("   Current Version Found: {}".format(current_version))
+async def is_mod_updated(mod_id, path):
+    workshop_version = await get_workshop_version(mod_id)
+    # logger.info(" Checking https://steamcommunity.com/sharedfiles/filedetails/changelog/{}".format(mod_id))
+    # logger.info("   Latest Version Found: {}".format(workshop_version))
+    current_version = await get_current_version(mod_id, path)
+    # logger.info(" Checking {}{}".format(path, mod_id))
+    # logger.info("   Current Version Found: {}".format(current_version))
 
     if not workshop_version or workshop_version == None: #Workshop version can't be found - likely is removed/hidden. No need to keep updating so return true.
         return True
@@ -141,29 +142,38 @@ def is_updated(mod_id, path):
         return (current_version > workshop_version)  # do we have the most recent file?
     return False
 
-def check_for_updates():
-    mods_to_download = []
+pending_mods = []
+async def get_pending_mods():
+    tasks = []  # List to hold tasks
     for file in os.listdir(PATH_PRESETS):
         if file.endswith(".html"):
-            _name = os.path.splitext(file)[0]
-            log("Reading Mod Preset ("+file+")")
+            # log("Reading Mod Preset (" + file + ")")
             mods = loadMods(os.path.join(PATH_PRESETS, file))
             for mod in mods:
-                logger.info("\n")
-                if os.path.isdir("{}/{}".format(PATH_STAGING_MODS, mod["ID"])):
-                    if not is_updated(mod["ID"], PATH_STAGING_MODS):
-                        logger.info("Update required for \"{}\" ({})".format(mod["name"], mod["ID"]))
-                    else:
-                        logger.info("No update required for \"{}\" ({})... SKIPPING".format(mod["name"], mod["ID"]))
-                        if not args.force: 
-                            continue
+                mod_id_path = os.path.join(PATH_STAGING_MODS, mod["ID"])
+                if os.path.isdir(mod_id_path):
+                    # Create a task for checking if the mod needs to be updated
+                    tasks.append(check_mod_update(mod, mod_id_path))
                 else:
                     logger.info("No file found, grabbing mod \"{}\" ({})".format(mod["name"], mod["ID"]))
+                    pending_mods.append(mod)
 
-                if mod not in mods_to_download:
-                    mods_to_download.append(mod)
+    # Await all the tasks
+    await asyncio.gather(*tasks)
 
-    return mods_to_download
+async def check_mod_update(mod, mod_id_path):
+    if not await is_mod_updated(mod["ID"], PATH_STAGING_MODS) or args.force:
+        logger.info("Update required for \"{}\" ({}) \n".format(mod["name"], mod["ID"]))
+        if mod not in pending_mods:
+            pending_mods.append(mod)
+    else:
+        logger.info("No update required for \"{}\" ({})... SKIPPING \n".format(mod["name"], mod["ID"]))
+
+#######################################################
+
+def call_steamcmd(params):
+    os.system("{} {}".format("steamcmd", params))
+    # logger.info("{} {}".format("steamcmd", params))
 
 def update_mods(mods):
     steam_cmd_params = " +force_install_dir {}".format(PATH_STAGING)
@@ -175,10 +185,8 @@ def update_mods(mods):
     call_steamcmd(steam_cmd_params)
     notify_updated_mods(mods)
 
+#######################################################
 
-
-
-# SYMLINK STUFF
 def lowercase_mods(stagingPath):
     for path, subdirs, files in os.walk(stagingPath):
         for name in files:
@@ -245,8 +253,8 @@ def modify_mod_and_meta(id: str, modpack: str, modName: str):
                     file.writelines(_data)
                 logger.info("Processed {} {}".format(_modPath, name))
 
+#######################################################
 
-##DISCORD WEBHOOK PLAYERS
 def notify_players_online(players):
     if args.discord: return
     playerHook = DiscordWebhook(url=DISCORD_WEBHOOK)
@@ -261,7 +269,7 @@ def notify_players_online(players):
     response = playerHook.execute()
 
 def notify_stopping_server(pending):
-    if args.discord: return
+    if args.discord or not pending: return
     serverHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     serverEmbed = DiscordEmbed(title='[INFO] The servers are being stopped.', description=f'There are {len(pending)} pending servers awaiting updates. These are empty and will be stopped.', color='2121dd')
     server_names = ""
@@ -279,7 +287,7 @@ def notify_symlink():
     response = symlinkHook.execute()
 
 def notify_starting_server(pending):
-    if args.discord: return
+    if args.discord or not pending: return
     serverHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     serverEmbed = DiscordEmbed(title='[INFO] The servers are being started.', description=f'These servers have been updated and are now starting...', color='2121dd')
     server_names = ""
@@ -313,8 +321,8 @@ def notify_updated_mods(mods):
             webhookSize = 0
     response = modHook.execute()
 
+#######################################################
 
-##PENDING SERVERS
 def get_pending_presets(mods):
     presets = []
     for preset in os.listdir(PATH_PRESETS):
@@ -332,18 +340,17 @@ def get_pending_presets(mods):
     return presets
 
 def get_pending_servers(mods, pending_presets):
-    pending_mods = []
+    pending_mod_ids = []
     pending_servers = []
     for mod in mods:
-        pending_mods.append(mod["ID"])
+        pending_mod_ids.append(mod["ID"])
     serversJSON = json.load(open(PANEL_SERVERS, "r"))
     for server in serversJSON:
         if server['game_selected'] == "arma3":
-            for server_mod in server["mods"]: #mods_ids
-                if server_mod.replace("/","\\").split("\\")[-1] in pending_mods: #Technically could just use the presets check...
+            for server_mod in server["mods"] or server_mod in server['mods_optional'] or server_mod in server['mods_server_only']: #mods_ids
+                if server_mod.replace("/","\\").split("\\")[-1] in pending_mod_ids: #Technically could just use the presets check...
                     if server not in pending_servers:
                         pending_servers.append(server)
-            for server_mod in server["mods"]: #presets
                 if server_mod.replace("/","\\").split("\\")[0]+".html" in pending_presets:
                     if server not in pending_servers:
                         pending_servers.append(server)
@@ -370,23 +377,33 @@ def get_online_players(servers):
             # logger.info(f"{server['title']} is offline or cannot be found.")
     return players
 
-def stop_server(id):
+#######################################################
+
+stopped_servers = []
+async def stop_server(id):
     try:
         response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
         if response.status_code == requests.codes.ok:
-            return True
+            stopped_servers.append(pending_server)
+            logger.info(f"{pending_server['title']} ({pending_server['uid']}) (SUCCESS) Server stop command recieved.")
+            return
     except requests.exceptions.RequestException as e:  # This is the correct syntax
-        return False
+        pass
+    logger.info(f"{pending_server['title']} ({pending_server['uid']}) (FAILED) Server could be offline.")
    
-def start_server(id):
+
+async def start_server(id):
     try:
         response = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
         if response.status_code == requests.codes.ok:
-            return True
+            logger.info(f"{pending_server['title']} ({pending_server['uid']}) (SUCCESS) Server start command recieved.")
+            return
     except requests.exceptions.RequestException as e:  # This is the correct syntax
-        return False
+        pass
+    logger.info(f"{pending_server['title']} ({pending_server['uid']}) (FAILED) Server could be offline.")
     
-#RUN
+#######################################################
+
 if __name__ == "__main__":
     config_logger()
     sys.excepthook = my_handler
@@ -398,42 +415,39 @@ if __name__ == "__main__":
         Path(f"{PATH_BASE}.running").touch()
         clean_logs()
         
-        mods = check_for_updates()
-        if mods:
+        asyncio.run(get_pending_mods())
+        print(pending_mods)
+        if pending_mods:
             #Check which presets are affected from updated mods as the whole preset gets symlinked.
-            pending_presets = get_pending_presets(mods)
+            pending_presets = get_pending_presets(pending_mods)
             log("The following mod presets need to be symlinked:")
             for preset in pending_presets:
                 logger.info(preset)
 
             #Check which servers are affected as a result of using either a preset / mod for the pending lists.
-            pending_servers = get_pending_servers(mods, pending_presets)
+            pending_servers = get_pending_servers(pending_mods, pending_presets)
             log("The following servers need to be restarted:")
             for server in pending_servers:
                 logger.info(server["title"])
 
             #Players online, only ever notify once that it can't update as this runs every X minutes.
             players = get_online_players(pending_servers)
-            log("Checking the servers to see if they are empty:")
             if players:
                 Path(f"{PATH_BASE}.notified").touch()
                 if not os.path.isfile(f"{PATH_BASE}.notified"):
                     notify_players_online(players)
             else:  
                 #Players no longer online, so we can stop the servers and copy over/symlink the updated mod folders.
-                stopped_servers = []
                 for pending_server in pending_servers:
-                    success = stop_server(pending_server["uid"])
-                    if success:
-                        logger.info(f"{pending_server['title']} ({pending_server['uid']}) (SUCCESS) Server stop command recieved.")
-                        stopped_servers.append(pending_server)
-                    else:
-                        logger.info(f"{pending_server['title']} ({pending_server['uid']}) (FAILED) Server could be offline.")
+                    asyncio.run(start_server(pending_server["uid"]))
                 notify_stopping_server(stopped_servers)
  
                 #Download the mods now that servers are offline and then symlink them.
                 log("Attempting to update mods:")
-                update_mods(mods)
+                update_mods(pending_mods)
+
+                # Mods updated, add in a symlink pending tag for future runs if the below fails
+                Path(f"{PATH_BASE}.symlink_pending").touch()
 
                 #Symlink files of pending modpacks
                 log("Attempting to symlink mods to servers:")
@@ -447,15 +461,16 @@ if __name__ == "__main__":
                             for m in mods:
                                 symlink_mod(m["ID"], _name)
                                 modify_mod_and_meta(m["ID"], _name, m["name"])
+                try:  
+                    os.remove(f"{PATH_BASE}.running")
+                except FileNotFoundError:
+                    pass
+                notify_symlink()
 
                 #Attempt to start all servers that had been stopped previously
                 log("Attempting to start servers:")
                 for stopped_server in stopped_servers:
-                    success = start_server(stopped_server["uid"])
-                    if success:
-                        logger.info(f"{pending_server['title']} ({pending_server['uid']}) (SUCCESS) Server start command recieved.")
-                    else:
-                        logger.info(f"{pending_server['title']} ({pending_server['uid']}) (FAILED) Potential issue, server could not be started.")
+                    asyncio.run(start_server(stopped_server["uid"]))
                 notify_starting_server(stopped_servers)
 
                 #Success, lets reset the script to be run again.
@@ -466,6 +481,17 @@ if __name__ == "__main__":
         else: 
             #No updates were required.
             log("Mods are up to date, and the server does not need to be restarted.")
+
+        
+        # Symlink backup if it failed previously
+        if os.path.isfile(f"{PATH_BASE}.symlink_pending"):
+            try:  
+                os.remove(f"{PATH_BASE}.running")
+            except FileNotFoundError:
+                pass
+            #Retry symlinking here?....
+
+
 
         #Allow script to be rerun.
         try:  
