@@ -129,11 +129,11 @@ async def get_current_version(mod_id, path):
 
 async def is_mod_updated(mod_id, path):
     workshop_version = await get_workshop_version(mod_id)
-    # logger.info(" Checking https://steamcommunity.com/sharedfiles/filedetails/changelog/{}".format(mod_id))
-    # logger.info("   Latest Version Found: {}".format(workshop_version))
+    logger.info(" Checking https://steamcommunity.com/sharedfiles/filedetails/changelog/{}".format(mod_id))
+    logger.info("   Latest Version Found: {}".format(workshop_version))
     current_version = await get_current_version(mod_id, path)
-    # logger.info(" Checking {}{}".format(path, mod_id))
-    # logger.info("   Current Version Found: {}".format(current_version))
+    logger.info(" Checking {}{}".format(path, mod_id))
+    logger.info("   Current Version Found: {}".format(current_version))
 
     if not workshop_version or workshop_version == None: #Workshop version can't be found - likely is removed/hidden. No need to keep updating so return true.
         return True
