@@ -439,7 +439,7 @@ if __name__ == "__main__":
             else:  
                 #Players no longer online, so we can stop the servers and copy over/symlink the updated mod folders.
                 for pending_server in pending_servers:
-                    asyncio.run(start_server(pending_server["uid"]))
+                    asyncio.run(stop_server(pending_server["uid"]))
                 notify_stopping_server(stopped_servers)
  
                 #Download the mods now that servers are offline and then symlink them.
