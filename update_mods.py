@@ -24,7 +24,8 @@ import aiohttp
 
 parser = argparse.ArgumentParser(description="", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-f", "--force", action="store_true", help="force an update of every preset and re-symlink.")
-parser.add_argument("-d", "--discord", action="store_true", help="disables use of the discord webhook to notify actions")
+parser.add_argument("-d", "--discord", action="store_true", help="disables use of the discord webhook to notify actions.")
+parser.add_argument("-s", "--symlink", action="store_true", help="forces the symlink process regardless if any mods updated.")
 args = parser.parse_args()
 
 #######################################################
@@ -176,6 +177,7 @@ def call_steamcmd(params):
     # logger.info("{} {}".format("steamcmd", params))
 
 def update_mods(mods):
+    if not mods: return
     steam_cmd_params = " +force_install_dir {}".format(PATH_STAGING)
     steam_cmd_params += " +login {}".format(STEAM_LOGIN)
     for mod in mods:
@@ -328,13 +330,16 @@ def get_pending_presets(mods):
     for preset in os.listdir(PATH_PRESETS):
         
         if preset.endswith(".html"):
+            if args.symlink or args.force or os.path.isfile(f"{PATH_BASE}.symlink_pending"):
+                presets.append(preset)
+                continue
             preset_mods = loadMods(os.path.join(PATH_PRESETS, preset))
             preset_mods_ids = []
             for preset_mod in preset_mods:
                 preset_mods_ids.append(preset_mod["ID"])
 
             for mod in mods:
-                if mod["ID"] in preset_mods_ids or args.force:
+                if mod["ID"] in preset_mods_ids:
                     if preset not in presets:
                         presets.append(preset)
     return presets
@@ -417,7 +422,7 @@ if __name__ == "__main__":
         
         asyncio.run(get_pending_mods())
         print(pending_mods)
-        if pending_mods:
+        if pending_mods or args.symlink or os.path.isfile(f"{PATH_BASE}.symlink_pending"):
             #Check which presets are affected from updated mods as the whole preset gets symlinked.
             pending_presets = get_pending_presets(pending_mods)
             log("The following mod presets need to be symlinked:")
@@ -462,7 +467,7 @@ if __name__ == "__main__":
                                 symlink_mod(m["ID"], _name)
                                 modify_mod_and_meta(m["ID"], _name, m["name"])
                 try:  
-                    os.remove(f"{PATH_BASE}.running")
+                    os.remove(f"{PATH_BASE}.symlink_pending")
                 except FileNotFoundError:
                     pass
                 notify_symlink()
@@ -481,17 +486,6 @@ if __name__ == "__main__":
         else: 
             #No updates were required.
             log("Mods are up to date, and the server does not need to be restarted.")
-
-        
-        # Symlink backup if it failed previously
-        if os.path.isfile(f"{PATH_BASE}.symlink_pending"):
-            try:  
-                os.remove(f"{PATH_BASE}.running")
-            except FileNotFoundError:
-                pass
-            #Retry symlinking here?....
-
-
 
         #Allow script to be rerun.
         try:  
