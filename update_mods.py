@@ -184,6 +184,7 @@ def update_mods(mods):
         logger.info("Downloading \"{}\" ({})".format(mod["name"], mod["ID"]))
         steam_cmd_params += " +workshop_download_item {} {} validate".format(WORKSHOP_ID, mod["ID"])
     steam_cmd_params += " +quit"
+    logger.info(f"Running SteamCMD with the following parameters: {steam_cmd_params}")
     call_steamcmd(steam_cmd_params)
     notify_updated_mods(mods)
 
@@ -352,7 +353,7 @@ def get_pending_servers(mods, pending_presets):
     serversJSON = json.load(open(PANEL_SERVERS, "r"))
     for server in serversJSON:
         if server['game_selected'] == "arma3":
-            for server_mod in server["mods"] or server_mod in server['mods_optional'] or server_mod in server['mods_server_only']: #mods_ids
+            for server_mod in server["mods"] + server['mods_optional'] + server['mods_server_only']: #mods_ids
                 if server_mod.replace("/","\\").split("\\")[-1] in pending_mod_ids: #Technically could just use the presets check...
                     if server not in pending_servers:
                         pending_servers.append(server)
@@ -448,7 +449,7 @@ if __name__ == "__main__":
                 notify_stopping_server(stopped_servers)
  
                 #Download the mods now that servers are offline and then symlink them.
-                log("Attempting to update mods:")
+                log(f"Attempting to update mods:")
                 update_mods(pending_mods)
 
                 # Mods updated, add in a symlink pending tag for future runs if the below fails

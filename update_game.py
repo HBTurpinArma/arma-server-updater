@@ -10,7 +10,6 @@ from datetime import datetime
 from discord_webhook import DiscordWebhook, DiscordEmbed
 from dotenv import dotenv_values
 import requests
-from distutils.dir_util import copy_tree
 
 config = dotenv_values(".env")
 
@@ -30,20 +29,31 @@ logger = logging.getLogger(__name__)
 SERVER_ID = "233780"
 WORKSHOP_ID = "107410"
  
-INSTALL_DIR = config["INSTALL_DIR"]
-CHECK_DIR = config["CHECK_DIR"]
-CONFIG_DIR = config["CONFIG_DIR"]
-ARMA_DIR = config["ARMA_DIR"]
-STEAMCMD_PATH = config["STEAMCMD_PATH"] 
+
+PATH_BASE = config["PATH_BASE"]
+PATH_STAGING = config["PATH_STAGING"]
+PATH_STAGING_MODS = config["PATH_STAGING_MODS"]
+PATH_PRESETS = config["PATH_PRESETS"]
+PATH_SERVER = config["PATH_SERVER"]
 
 STEAM_LOGIN = config["STEAM_LOGIN"]
+STEAM_PASSWORD = config["STEAM_PASSWORD"] #NOT USED - BUT MAY WANT TO IF CREDENTIAL CACHING BECOMES A PROBLEM
+
+PANEL_SERVERS = config["PANEL_SERVERS"]
+PANEL_IP = config["PANEL_IP"]
 PANEL_LOGIN = config["PANEL_LOGIN"]
-PANEL_PASS = config["PANEL_PASS"]
+PANEL_PASSWORD = config["PANEL_PASSWORD"]
 
 DISCORD_WEBHOOK = config["DISCORD_WEBHOOK"]
-SERVERS_JSON_FILE = config["SERVERS_JSON_FILE"]
+
+
+
+
 
 logger.info(config)
+
+
+
 
 ##LOGGING STUFF
 def config_logger():
@@ -82,9 +92,9 @@ def call_steamcmd(params):
     os.system("{} {}".format("steamcmd", params))
 
 def update_game():
-    steam_cmd_params = " +force_install_dir {}".format(ARMA_DIR)
+    steam_cmd_params = " +force_install_dir {}".format(PATH_SERVER)
     steam_cmd_params += " +login {}".format(STEAM_LOGIN)
-    steam_cmd_params += ' +app_update 233780 -beta creatordlc " validate +quit {}'.format(SERVER_ID)
+    steam_cmd_params += ' +app_update 233780 -beta creatordlc validate +quit {}'.format(SERVER_ID)
     call_steamcmd(steam_cmd_params)
         
 def notify_stopping_server():
@@ -103,7 +113,7 @@ def get_server_id(title):
 
 def stop_server(id):
     try:
-        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=6)
+        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
         if response.status_code == requests.codes.ok:
             return True
     except requests.exceptions.RequestException as e:  # This is the correct syntax
@@ -111,12 +121,13 @@ def stop_server(id):
    
 def start_server(id):
     try:
-        response = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASS), timeout=6)
+        response = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
         if response.status_code == requests.codes.ok:
             return True
     except requests.exceptions.RequestException as e:  # This is the correct syntax
         return False
     
 if __name__ == "__main__":
+    notify_stopping_server()
     update_game()
 
