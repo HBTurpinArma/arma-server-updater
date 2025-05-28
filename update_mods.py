@@ -470,7 +470,11 @@ if __name__ == "__main__":
     config_logger()
     sys.excepthook = my_handler
     if args.force:
-        logger.info("Forcing is enabled, all mods will be symlinked.")
+        logger.info("Forcing is enabled, all mods will be updated/validated and symlinked.")
+    if args.symlink:
+        logger.info("Symlink Forcing is enabled, all mods will be symlinked regardless of mod updates.")
+    if args.discord:
+        logger.info("Discord notifications are disabled, no notifications will be sent.")
 
     # Only one instance of the updater can run at a time, stop it running again mid-update.
     if not os.path.isfile(f"{PATH_BASE}.running"):
@@ -500,6 +504,7 @@ if __name__ == "__main__":
                     notify_players_online(players)
             else:
                 # Players no longer online, so we can stop the servers and copy over/symlink the updated mod folders.
+                log("Attempting to stop servers:")
                 asyncio.run(stop_pending_servers(pending_servers))
 
                 # Notify that the servers are stopping.
@@ -528,8 +533,11 @@ if __name__ == "__main__":
                     os.remove(f"{PATH_BASE}.symlink_pending")
                 except FileNotFoundError:
                     pass
+
+                # Notify that the symlinks have started to push the updates to the servers.
                 notify_symlink()
 
+                log(f"Attempting to start servers: {stopped_servers}")
                 # Attempt to start all servers that had been stopped previously
                 asyncio.run(start_stopped_servers(stopped_servers))
 
