@@ -130,8 +130,14 @@ def get_workshop_changelog(mod_id):
 
 
 async def get_current_version(mod_id, path):
-    if os.path.isdir("{}/{}".format(path, mod_id)):
-        return datetime.fromtimestamp(os.path.getmtime("{}/{}/meta.cpp".format(path, mod_id)))
+    mod_path = "{}/{}".format(path, mod_id)
+    if os.path.isdir(mod_path):
+        meta_file = "{}/meta.cpp".format(mod_path)
+        mod_file = "{}/mod.cpp".format(mod_path)
+        if os.path.isfile(meta_file):
+            return datetime.fromtimestamp(os.path.getmtime(meta_file))
+        elif os.path.isfile(mod_file):
+            return datetime.fromtimestamp(os.path.getmtime(mod_file))
     return datetime(1, 1, 1, 0, 0)
 
 
