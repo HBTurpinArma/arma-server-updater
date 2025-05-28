@@ -495,6 +495,8 @@ if __name__ == "__main__":
             log("The following servers need to be restarted:")
             for server in pending_servers:
                 logger.info(server["title"])
+            if not pending_servers:
+                logger.info("No pending servers to stop, skipping...")
 
             # Players online, only ever notify once that it can't update as this runs every X minutes.
             players = get_online_players(pending_servers)
@@ -505,10 +507,11 @@ if __name__ == "__main__":
             else:
                 # Players no longer online, so we can stop the servers and copy over/symlink the updated mod folders.
                 log("Attempting to stop servers:")
-                asyncio.run(stop_pending_servers(pending_servers))
-
-                # Notify that the servers are stopping.
-                notify_stopping_server(stopped_servers)
+                if pending_servers:
+                    asyncio.run(stop_pending_servers(pending_servers))
+                    notify_stopping_server(stopped_servers)
+                else:
+                    logger.info("No pending servers to stop, skipping...")
 
                 # Download the mods now that servers are offline and then symlink them.
                 log(f"Attempting to update mods:")
@@ -518,12 +521,11 @@ if __name__ == "__main__":
                 Path(f"{PATH_BASE}.symlink_pending").touch()
 
                 # Symlink files of pending modpacks
-                log("Attempting to symlink mods to servers:")
                 for file in os.listdir(PATH_PRESETS):
                     if file.endswith(".html"):
                         if file in pending_presets:  # Check that is a preset that needs to updated symlink, if so go for it.
                             _name = os.path.splitext(file)[0]
-                            log("Processing: {}".format(os.path.join(PATH_PRESETS, file)))
+                            log("Attempting to symlink preset: {}".format(os.path.join(PATH_PRESETS, file)))
                             clean_mods(_name)
                             mods = loadMods(os.path.join(PATH_PRESETS, file))
                             for m in mods:
@@ -537,12 +539,13 @@ if __name__ == "__main__":
                 # Notify that the symlinks have started to push the updates to the servers.
                 notify_symlink()
 
-                log(f"Attempting to start servers: {stopped_servers}")
                 # Attempt to start all servers that had been stopped previously
-                asyncio.run(start_stopped_servers(stopped_servers))
-
-                # Notify that the servers are starting again.
-                notify_starting_server(stopped_servers)
+                log(f"Attempting to start servers:")
+                if stopped_servers:
+                    asyncio.run(start_stopped_servers(stopped_servers))
+                    notify_starting_server(stopped_servers)
+                else:
+                    logger.info("No servers to start, skipping...")
 
                 # Success, lets reset the script to be run again.
                 try:
