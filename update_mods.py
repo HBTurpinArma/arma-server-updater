@@ -501,9 +501,9 @@ if __name__ == "__main__":
             # Players online, only ever notify once that it can't update as this runs every X minutes.
             players = get_online_players(pending_servers)
             if players:
-                Path(f"{PATH_BASE}.notified").touch()
                 if not os.path.isfile(f"{PATH_BASE}.notified"):
                     notify_players_online(players)
+                    Path(f"{PATH_BASE}.notified").touch()
             else:
                 # Players no longer online, so we can stop the servers and copy over/symlink the updated mod folders.
                 log("Attempting to stop servers:")
