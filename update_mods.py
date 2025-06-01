@@ -275,7 +275,7 @@ def modify_mod_and_meta(id: str, modpack: str, modName: str):
                 with open(os.path.join(root, name), "r", encoding='utf8', errors='ignore') as file:
                     _data = file.readlines()
                 for i, l in enumerate(_data):
-                    if l.startswith("name"):
+                    if l.startswith("name="):
                         _data[i] = f'name="{modName}";\n'
                 with open(os.path.join(_destPath, name), "w", encoding="utf-8") as file:
                     file.writelines(_data)
