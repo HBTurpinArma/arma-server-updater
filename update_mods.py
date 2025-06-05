@@ -150,10 +150,10 @@ async def is_mod_updated(mod_id, path):
     logger.info("   Current Version Found: {}".format(current_version))
     if current_version == datetime(1, 1, 1, 0, 0):
         logger.info("   No current version found, assuming update is required.")
-
-    if not workshop_version or workshop_version == None:  # Workshop version can't be found - likely is removed/hidden. No need to keep updating so return true.
+        return False
+    if workshop_version == datetime(1, 1, 1, 0, 0):  # Workshop version can't be found - likely is removed/hidden. No need to keep updating so return true.
+        logger.info("   Couldn't obtain workshop version, suggesting no update is required.")
         return True
-
     if current_version:
         return (current_version > workshop_version)  # do we have the most recent file?
     return False
