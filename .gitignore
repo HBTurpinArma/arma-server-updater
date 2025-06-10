@@ -12,6 +12,3 @@ presets/*
 .update
 .env
 __pycache__/process_html.cpython-39.pyc
-server_test.py
-server_info.py
-server_players.py

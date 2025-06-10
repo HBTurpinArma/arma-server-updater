@@ -25,7 +25,7 @@ import pandas
 import csv
 
 #######################################################
-config = dotenv_values(".env")
+config = dotenv_values("../.env")
 
 PATH_BASE = config["PATH_BASE"]
 PATH_STAGING = config["PATH_STAGING"]

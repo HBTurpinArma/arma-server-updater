@@ -103,29 +103,6 @@ def notify_stopping_server():
     playerHook.add_embed(playerEmbed)
     response = playerHook.execute()
 
-##SERVER STUFF
-def get_server_id(title):
-    title = title.lstrip(' ').rstrip(' ') #remove leading whitespace and trailing whitespace
-    charMap = json.loads('{"$":"dollar","%":"percent","&":"and","<":"less",">":"greater","|":"or","¢":"cent","£":"pound"," ":"-",".":"-","/":""}')
-    for a in charMap:
-        title = title.replace(a,charMap[a])
-    return title
-
-def stop_server(id):
-    try:
-        response = requests.post("http://localhost:3000/api/servers/"+id+"/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
-        if response.status_code == requests.codes.ok:
-            return True
-    except requests.exceptions.RequestException as e:  # This is the correct syntax
-        return False
-   
-def start_server(id):
-    try:
-        response = requests.post("http://localhost:3000/api/servers/"+id+"/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
-        if response.status_code == requests.codes.ok:
-            return True
-    except requests.exceptions.RequestException as e:  # This is the correct syntax
-        return False
     
 if __name__ == "__main__":
     notify_stopping_server()
