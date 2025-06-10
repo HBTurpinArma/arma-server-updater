@@ -222,6 +222,7 @@ def lowercase_mods(stagingPath):
 def clean_mods(modset):
     _path = os.path.join(PATH_SERVER, modset)
     if os.path.exists(_path) and os.path.isdir(_path):
+        logger.info("Cleaning up old modpack directory: {}".format(_path))
         shutil.rmtree(_path)
     elif os.path.exists(_path) and not os.path.isdir(_path):
         raise ValueError("Modpack path is not a directory cannot continue")
@@ -231,8 +232,10 @@ def clean_mods(modset):
 def symlink_mod(id: str, modpack: str, _modPath: str = None):
     if not _modPath:
         _modPath = os.path.join(PATH_STAGING_MODS, id)
+    logger.info("Starting symlink of {} - {}".format(modpack, id))
     _destPath = os.path.join(PATH_SERVER, modpack, "@" + id)
     if os.path.exists(_destPath) and os.path.isdir(_destPath):
+        logger.info("Cleaning up old mod: {}".format(_destPath))
         shutil.rmtree(_destPath)
     symlink_from_to(_modPath, _destPath)
 
