@@ -1,25 +1,23 @@
+import argparse
+import asyncio
+import json
+import logging
 import os
 import os.path
 import re
 import shutil
-import sys
-import logging
+import subprocess
 import sys
 import traceback
-import json
 from datetime import datetime
+from pathlib import Path
 from urllib import request
-from discord_webhook import DiscordWebhook, DiscordEmbed
-from pathlib import Path
 import a2s
-from process_html import loadMods
-from dotenv import dotenv_values
-import requests
-from pathlib import Path
-import argparse
-import asyncio
 import aiohttp
-import subprocess
+import requests
+from discord_webhook import DiscordWebhook, DiscordEmbed
+from dotenv import dotenv_values
+from process_html import loadMods
 
 #######################################################
 
@@ -461,12 +459,13 @@ if __name__ == "__main__":
     if args.discord:
         logger.info("Discord notifications are disabled, no notifications will be sent.")
 
+    #Cleanup logs
+    logger.info("Cleaning up old log files...")
+    clean_logs()
+
     # Only one instance of the updater can run at a time, stop it running again mid-update.
     if not os.path.isfile(f"{PATH_BASE}.running"):
         Path(f"{PATH_BASE}.running").touch()
-
-        #Cleanup logs
-        clean_logs()
 
         #Get pending update mods
         asyncio.run(get_pending_mods())

@@ -1,24 +1,18 @@
+import argparse
+import asyncio
+import json
+import logging
 import os
 import os.path
 import re
-import shutil
-import sys
-import logging
+import subprocess
 import sys
 import traceback
-import json
 from datetime import datetime
-from urllib import request
-from discord_webhook import DiscordWebhook, DiscordEmbed
-from pathlib import Path
 import a2s
-from dotenv import dotenv_values
 import requests
-from pathlib import Path
-import argparse
-import asyncio
-import aiohttp
-import subprocess
+from discord_webhook import DiscordWebhook, DiscordEmbed
+from dotenv import dotenv_values
 
 #######################################################
 
@@ -86,7 +80,7 @@ def clean_logs():
             logger.info(name)
             if name.endswith(".log"):
                 _dts = datetime.strptime(os.path.splitext(name)[0][12:], "%Y%m%d-%H%M%S")
-                if (datetime.now() - _dts).total_seconds() > 60 * 60 * 24:
+                if (datetime.now() - _dts).total_seconds() > 60 * 60 * 24 * 31:
                     logger.info("removing log file: {}".format(name))
                     os.remove(os.path.join(root, name))
 
@@ -180,6 +174,10 @@ if __name__ == "__main__":
     if args.discord:
         logger.info("Discord notifications are disabled, no notifications will be sent.")
 
+    #Cleanup logs
+    logger.info("Cleaning up old log files...")
+    clean_logs()
+
     #Get all the servers from the panel
     servers = json.load(open(PANEL_SERVERS, "r"))
 
@@ -190,9 +188,6 @@ if __name__ == "__main__":
     if players:
         notify_players_online(players)
     else:
-        #Cleanup logs
-        clean_logs()
-
         #Stop all servers
         log("Attempting to stop servers:")
         notify_stopping_servers()
