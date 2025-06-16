@@ -1,9 +1,6 @@
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
-webhook = "https://discord.com/api/webhooks/1383818775249293477/WR6WSfxnP-4-q-LQnCeF0VTSnKD_dHDULagD3glIdgP_uj1gVDpMQxtjPJglP0PGNyqN"
-
-# https://discord.com/api/webhooks/1383818775249293477/WR6WSfxnP-4-q-LQnCeF0VTSnKD_dHDULagD3glIdgP_uj1gVDpMQxtjPJglP0PGNyqN #AM2 SERVER INFO
-# https://discord.com/api/webhooks/1383822950884573265/P8eN7_9exLsxFdCOfaXiSUiCrKFbCohc_EueGsQ2TYeyyq9MARjEsnAWpZAC8dP4Ilv2  # TESTING BOT CHANNEL
+webhook = ""
 
 sog_non_cdlc_owner_link = "https://drive.google.com/file/d/1bTUDmnRW2amZm7uKz2ShikutPv3aJrKn/view?usp=drive_link"
 sog_cdlc_owner_link = "https://drive.google.com/file/d/1TUKsKJuXpNWNIGCUOgtgEAqjPE-kcjPP/view?usp=drive_link"
