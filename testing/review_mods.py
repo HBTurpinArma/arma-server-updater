@@ -94,9 +94,9 @@ def get_workshop_required_item_ids(mod_id):
 if __name__ == "__main__":
     presets = []
 
-    core_mods = get_workshop_required_item_ids("3038124203")
-    map_mods = get_workshop_required_item_ids("3038082542")
-    am2_mods = get_workshop_required_item_ids("3397107962")
+    core_mods = get_workshop_required_item_ids("3038124203") or []
+    map_mods = get_workshop_required_item_ids("3038082542") or []
+    am2_mods = get_workshop_required_item_ids("2293037577") or []
 
     for preset in os.listdir(PATH_PRESETS):
         mods = []
@@ -118,7 +118,7 @@ if __name__ == "__main__":
                 mods.append(mod)
 
             keys = mods[0].keys()
-            with open(f'preview/{preset[:-5]}.csv', 'w', newline='') as output_file:
+            with open(f'../preview/{preset[:-5]}.csv', 'w', newline='') as output_file:
                 dict_writer = csv.DictWriter(output_file, keys)
                 dict_writer.writeheader()
                 dict_writer.writerows(mods)
