@@ -1,0 +1,961 @@
+class Player1
+
+	{
+
+		name="Kaelies [AM 2]";
+
+		killsInfantry=99;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=99;
+
+		killed=0;
+
+	};
+
+	class Player2
+
+	{
+
+		name="Chris [SN DC]";
+
+		killsInfantry=56;
+
+		killsSoft=2;
+
+		killsArmor=6;
+
+		killsAir=-1;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=73;
+
+		killed=2;
+
+	};
+
+	class Player3
+
+	{
+
+		name="Holappa [AM 2]";
+
+		killsInfantry=50;
+
+		killsSoft=2;
+
+		killsArmor=5;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=69;
+
+		killed=1;
+
+	};
+
+	class Player4
+
+	{
+
+		name="Zizoor [AM 2]";
+
+		killsInfantry=46;
+
+		killsSoft=3;
+
+		killsArmor=2;
+
+		killsAir=2;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=68;
+
+		killed=0;
+
+	};
+
+	class Player5
+
+	{
+
+		name="Datafire [AM 2]";
+
+		killsInfantry=57;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=57;
+
+		killed=0;
+
+	};
+
+	class Player6
+
+	{
+
+		name="TimHawk [AM 2]";
+
+		killsInfantry=18;
+
+		killsSoft=1;
+
+		killsArmor=11;
+
+		killsAir=-1;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=48;
+
+		killed=4;
+
+	};
+
+	class Player7
+
+	{
+
+		name="Namoral [RPG]";
+
+		killsInfantry=34;
+
+		killsSoft=1;
+
+		killsArmor=1;
+
+		killsAir=1;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=44;
+
+		killed=2;
+
+	};
+
+	class Player8
+
+	{
+
+		name="Asru [AM 2]";
+
+		killsInfantry=38;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=1;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=43;
+
+		killed=0;
+
+	};
+
+	class Player9
+
+	{
+
+		name="Spotlessnest [BA HDI]";
+
+		killsInfantry=32;
+
+		killsSoft=0;
+
+		killsArmor=2;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=38;
+
+		killed=2;
+
+	};
+
+	class Player10
+
+	{
+
+		name="MaverickSabre [AM DC]";
+
+		killsInfantry=37;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=37;
+
+		killed=2;
+
+	};
+
+	class Player11
+
+	{
+
+		name="Flay [AM 2]";
+
+		killsInfantry=27;
+
+		killsSoft=2;
+
+		killsArmor=2;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=37;
+
+		killed=5;
+
+	};
+
+	class Player12
+
+	{
+
+		name="Boberrmann [AM 2]";
+
+		killsInfantry=36;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=36;
+
+		killed=5;
+
+	};
+
+	class Player13
+
+	{
+
+		name="ModernMage [AM 2]";
+
+		killsInfantry=34;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=34;
+
+		killed=3;
+
+	};
+
+	class Player14
+
+	{
+
+		name="retri [RPG CO]";
+
+		killsInfantry=29;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=29;
+
+		killed=1;
+
+	};
+
+	class Player15
+
+	{
+
+		name="HeyNobody [AM 2]";
+
+		killsInfantry=22;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=22;
+
+		killed=0;
+
+	};
+
+	class Player16
+
+	{
+
+		name="Mortin [AM2]";
+
+		killsInfantry=21;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=21;
+
+		killed=1;
+
+	};
+
+	class Player17
+
+	{
+
+		name="Fear [AM 2SL]";
+
+		killsInfantry=20;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=20;
+
+		killed=0;
+
+	};
+
+	class Player18
+
+	{
+
+		name="Birb [AM 2]";
+
+		killsInfantry=19;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=19;
+
+		killed=1;
+
+	};
+
+	class Player19
+
+	{
+
+		name="SweffNL [AM 2FL]";
+
+		killsInfantry=13;
+
+		killsSoft=2;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=17;
+
+		killed=1;
+
+	};
+
+	class Player20
+
+	{
+
+		name="IrateIrohL [AM 2]";
+
+		killsInfantry=17;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=17;
+
+		killed=2;
+
+	};
+
+	class Player21
+
+	{
+
+		name="doomedtnt [CC 2CLC]";
+
+		killsInfantry=16;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=16;
+
+		killed=0;
+
+	};
+
+	class Player22
+
+	{
+
+		name="Almerra [AM 2]";
+
+		killsInfantry=15;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=15;
+
+		killed=0;
+
+	};
+
+	class Player23
+
+	{
+
+		name="CrepeApe [AM 2]";
+
+		killsInfantry=15;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=15;
+
+		killed=0;
+
+	};
+
+	class Player24
+
+	{
+
+		name="DingoControl [AM 2]";
+
+		killsInfantry=12;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=12;
+
+		killed=0;
+
+	};
+
+	class Player25
+
+	{
+
+		name="Propx [AM 2]";
+
+		killsInfantry=12;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=12;
+
+		killed=0;
+
+	};
+
+	class Player26
+
+	{
+
+		name="Graf von Scyth [AM2]";
+
+		killsInfantry=8;
+
+		killsSoft=1;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=10;
+
+		killed=0;
+
+	};
+
+	class Player27
+
+	{
+
+		name="GanX [AM 2SL]";
+
+		killsInfantry=9;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=9;
+
+		killed=0;
+
+	};
+
+	class Player28
+
+	{
+
+		name="Vollantix [AM 2SL]";
+
+		killsInfantry=7;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=7;
+
+		killed=0;
+
+	};
+
+	class Player29
+
+	{
+
+		name="RUGAN [AM2]";
+
+		killsInfantry=7;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=7;
+
+		killed=1;
+
+	};
+
+	class Player30
+
+	{
+
+		name="GamingEnding[AM 2DI]";
+
+		killsInfantry=6;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=6;
+
+		killed=2;
+
+	};
+
+	class Player31
+
+	{
+
+		name="Koleisus [AM 2]";
+
+		killsInfantry=4;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=4;
+
+		killed=2;
+
+	};
+
+	class Player32
+
+	{
+
+		name="VAGI [AM2]";
+
+		killsInfantry=3;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=3;
+
+		killed=2;
+
+	};
+
+	class Player33
+
+	{
+
+		name="Aleksander [AM 2]";
+
+		killsInfantry=2;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=2;
+
+		killed=1;
+
+	};
+
+	class Player34
+
+	{
+
+		name="ConnorLO [AM DO]";
+
+		killsInfantry=0;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=0;
+
+		killed=0;
+
+	};
+
+	class Player35
+
+	{
+
+		name="DustyEllis [AM 2]";
+
+		killsInfantry=0;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=0;
+
+		killed=0;
+
+	};
+
+	class Player36
+
+	{
+
+		name="headlessclient";
+
+		killsInfantry=0;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=0;
+
+		killed=0;
+
+	};
+
+	class Player37
+
+	{
+
+		name="vBee [BB CO]";
+
+		killsInfantry=0;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=0;
+
+		killed=1;
+
+	};
+
+	class Player38
+
+	{
+
+		name="HBTurpin [AM 2SA]";
+
+		killsInfantry=3;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=-1;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=-2;
+
+		killed=0;
+
+	};
+
+	class Player39
+
+	{
+
+		name="NotASheep [AM 2SO]";
+
+		killsInfantry=-5;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=0;
+
+		killsPlayers=-4;
+
+		customScore=0;
+
+		killsTotal=-5;
+
+		killed=0;
+
+	};
+
+	class Player40
+
+	{
+
+		name="TheDaveinator [AM 2PL]";
+
+		killsInfantry=0;
+
+		killsSoft=0;
+
+		killsArmor=0;
+
+		killsAir=-1;
+
+		killsPlayers=0;
+
+		customScore=0;
+
+		killsTotal=-5;
+
+		killed=0;
+
+	};
+
+};
