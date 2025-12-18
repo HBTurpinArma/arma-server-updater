@@ -41,6 +41,7 @@ PATH_PRESETS = config["PATH_PRESETS"]
 PATH_SERVER = config["PATH_SERVER"]
 STEAM_LOGIN = config["STEAM_LOGIN"]
 STEAM_PASSWORD = config["STEAM_PASSWORD"]  # NOT USED - BUT MAY WANT TO IF CREDENTIAL CACHING BECOMES A PROBLEM
+STEAM_API_KEY = config["STEAM_API_KEY"]
 PANEL_SERVERS = config["PANEL_SERVERS"]
 PANEL_IP = config["PANEL_IP"]
 PANEL_LOGIN = config["PANEL_LOGIN"]
@@ -61,9 +62,11 @@ def my_handler(type, value, tb):
             pass
     sys.__excepthook__(type, value, tb)  # calls default excepthook
 
+
 # Install exception handler
 logger = logging.getLogger(__name__)
 logger.info(config)
+
 
 def config_logger():
     os.makedirs(f"{PATH_BASE}logs", exist_ok=True)
@@ -79,11 +82,13 @@ def config_logger():
     # add the handler to the root logger
     logging.getLogger('').addHandler(console)
 
+
 def log(msg):
     logger.info("")
     logger.info("{{0:=<{}}}".format(len(msg)).format(""))
     logger.info(msg)
     logger.info("{{0:=<{}}}".format(len(msg)).format(""))
+
 
 def clean_logs():
     for root, dirs, files in os.walk(os.path.join(PATH_BASE, "logs")):
@@ -99,17 +104,20 @@ def clean_logs():
 
 #######################################################
 
-async def get_workshop_version(mod_id):
-    PATTERN = re.compile(r"workshopAnnouncement.*?<p id=\"(\d+)\">", re.DOTALL)
-    WORKSHOP_CHANGELOG_URL = "https://steamcommunity.com/sharedfiles/filedetails/changelog"
 
+async def get_workshop_version(mod_id):
+    data = {"key": STEAM_API_KEY, "itemcount": 1, "publishedfileids[0]": mod_id, }
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{WORKSHOP_CHANGELOG_URL}/{mod_id}") as response:
-            response_text = await response.text()
-            match = PATTERN.search(response_text)
-            if match:
-                return datetime.fromtimestamp(int(match.group(1)))
-    return datetime(1, 1, 1, 0, 0)
+        async with session.post("https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/", data=data) as resp:
+            resp.raise_for_status()
+            result = await resp.json()
+
+    details = result["response"]["publishedfiledetails"][0]
+    try:
+        return datetime.utcfromtimestamp(details["time_updated"])
+    except Exception:
+        return datetime(1, 1, 1, 0, 0)
+
 
 def get_workshop_changelog(mod_id):
     PATTERN = re.compile(r"workshopAnnouncement.*?<p .*?\>(.*?)</p>", re.DOTALL)
@@ -122,6 +130,7 @@ def get_workshop_changelog(mod_id):
         return re.sub(CLEANHTML, '', match.group(1).replace("<br>", "\n").replace("</b>", "\n"))
     return ""
 
+
 async def get_current_version(mod_id, path):
     mod_path = "{}/{}".format(path, mod_id)
     if os.path.isdir(mod_path):
@@ -132,6 +141,7 @@ async def get_current_version(mod_id, path):
         elif os.path.isfile(mod_file):
             return datetime.fromtimestamp(os.path.getmtime(mod_file))
     return datetime(1, 1, 1, 0, 0)
+
 
 async def is_mod_updated(mod_id, path):
     workshop_version = await get_workshop_version(mod_id)
@@ -150,10 +160,12 @@ async def is_mod_updated(mod_id, path):
         return (current_version > workshop_version)  # do we have the most recent file?
     return False
 
+
 pending_mods = []
 
+
 async def get_pending_mods():
-    tasks = []  # List to hold tasks
+    # tasks = []  # List to hold tasks
     for file in os.listdir(PATH_PRESETS):
         if file.endswith(".html"):
             # log("Reading Mod Preset (" + file + ")")
@@ -162,13 +174,14 @@ async def get_pending_mods():
                 mod_id_path = os.path.join(PATH_STAGING_MODS, mod["ID"])
                 if os.path.isdir(mod_id_path):
                     # Create a task for checking if the mod needs to be updated
-                    tasks.append(check_mod_update(mod, mod_id_path))
+                    # tasks.append(check_mod_update(mod, mod_id_path))
+                    await check_mod_update(mod, mod_id_path)
                 else:
                     logger.info("No file found, grabbing mod \"{}\" ({})".format(mod["name"], mod["ID"]))
                     pending_mods.append(mod)
 
-    # Await all the tasks
-    await asyncio.gather(*tasks)
+    # Await all the tasks  # await asyncio.gather(*tasks)
+
 
 async def check_mod_update(mod, mod_id_path):
     if not await is_mod_updated(mod["ID"], PATH_STAGING_MODS) or args.force:
@@ -177,6 +190,7 @@ async def check_mod_update(mod, mod_id_path):
             pending_mods.append(mod)
     else:
         logger.info("No update required for \"{}\" ({})... SKIPPING \n".format(mod["name"], mod["ID"]))
+
 
 #######################################################
 
@@ -198,6 +212,7 @@ def call_steamcmd(params):
     except Exception as e:
         logger.exception(f"Failed to run steamcmd: {e}")
 
+
 def update_mods(mods):
     if not mods: return
     steam_cmd_params = " +force_install_dir {}".format(PATH_STAGING)
@@ -210,6 +225,7 @@ def update_mods(mods):
     call_steamcmd(steam_cmd_params)
     asyncio.run(notify_updated_mods(mods))
 
+
 #######################################################
 
 def lowercase_mods(stagingPath):
@@ -218,6 +234,7 @@ def lowercase_mods(stagingPath):
             file_path = os.path.join(path, name)
             new_name = os.path.join(path, name.lower())
             os.rename(file_path, new_name)
+
 
 def clean_mods(modset):
     _path = os.path.join(PATH_SERVER, modset)
@@ -228,6 +245,7 @@ def clean_mods(modset):
         raise ValueError("Modpack path is not a directory cannot continue")
     os.mkdir(_path)
 
+
 def symlink_mod(id: str, modpack: str, _modPath: str = None):
     if not _modPath:
         _modPath = os.path.join(PATH_STAGING_MODS, id)
@@ -237,6 +255,7 @@ def symlink_mod(id: str, modpack: str, _modPath: str = None):
         logger.info("Cleaning up old mod: {}".format(_destPath))
         shutil.rmtree(_destPath)
     symlink_from_to(_modPath, _destPath)
+
 
 def symlink_from_to(_modPath, _destPath):
     os.makedirs(os.path.join(_destPath, "addons"), exist_ok=True)
@@ -266,6 +285,7 @@ def symlink_from_to(_modPath, _destPath):
                 continue
             logger.info("Processed {} {}".format(_modPath, name))
 
+
 def modify_mod_and_meta(id: str, modpack: str, modName: str):
     _modPath = os.path.join(PATH_STAGING_MODS, id)
     _destPath = os.path.join(PATH_SERVER, modpack, "@" + id)
@@ -280,6 +300,7 @@ def modify_mod_and_meta(id: str, modpack: str, modName: str):
                 with open(os.path.join(_destPath, name), "w", encoding="utf-8") as file:
                     file.writelines(_data)
                 logger.info("Processed {} {}".format(_modPath, name))
+
 
 #######################################################
 
@@ -296,6 +317,7 @@ def notify_players_online(players):
     playerHook.add_embed(playerEmbed)
     response = playerHook.execute()
 
+
 def notify_stopping_server(pending):
     if args.discord or not pending: return
     serverHook = DiscordWebhook(url=DISCORD_WEBHOOK)
@@ -307,12 +329,14 @@ def notify_stopping_server(pending):
     serverHook.add_embed(serverEmbed)
     response = serverHook.execute()
 
+
 def notify_symlink():
     if args.discord: return
     symlinkHook = DiscordWebhook(url=DISCORD_WEBHOOK)
     symlinkEmbed = DiscordEmbed(title='[INFO] Updated mod files have been symlinked over to the servers.', description=f'', color='21dd21')
     symlinkHook.add_embed(symlinkEmbed)
     response = symlinkHook.execute()
+
 
 def notify_starting_server(pending):
     if args.discord or not pending: return
@@ -324,6 +348,7 @@ def notify_starting_server(pending):
     serverEmbed.add_embed_field(name="Starting Servers", value=server_names)
     serverHook.add_embed(serverEmbed)
     response = serverHook.execute()
+
 
 async def notify_updated_mods(mods):
     if args.discord: return
@@ -351,6 +376,7 @@ async def notify_updated_mods(mods):
             webhookSize = 0
     response = modHook.execute()
 
+
 #######################################################
 
 def get_pending_presets(mods):
@@ -372,6 +398,7 @@ def get_pending_presets(mods):
                         presets.append(preset)
     return presets
 
+
 def get_pending_servers(mods, pending_presets):
     pending_mod_ids = []
     pending_servers = []
@@ -389,6 +416,7 @@ def get_pending_servers(mods, pending_presets):
                         pending_servers.append(server)
     return pending_servers
 
+
 def get_online_players(servers):
     players = {}
     for server in servers:
@@ -402,23 +430,20 @@ def get_online_players(servers):
             pass  # logger.info(f"{server['title']} is offline or cannot be found.")
     return players
 
+
 #######################################################
 
 stopped_servers = []
+
 
 async def stop_pending_servers(servers):
     # Run all stop_server coroutines concurrently
     await asyncio.gather(*[stop_server(server) for server in servers])
 
+
 async def stop_server(server):
     try:
-        response = await asyncio.to_thread(
-            requests.post,
-            f"http://localhost:3000/api/servers/{server['uid']}/stop",
-            data={""},
-            auth=(PANEL_LOGIN, PANEL_PASSWORD),
-            timeout=6
-        )
+        response = await asyncio.to_thread(requests.post, f"http://localhost:3000/api/servers/{server['uid']}/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
         if response.status_code == requests.codes.ok:
             stopped_servers.append(server)
             logger.info(f"{server['title']} ({server['uid']}) (SUCCESS) Server stop command received.")
@@ -427,25 +452,22 @@ async def stop_server(server):
         pass
     logger.info(f"{server['title']} ({server['uid']}) (FAILED) Server could be offline.")
 
+
 async def start_stopped_servers(servers):
     # Run all start_server coroutines concurrently
     await asyncio.gather(*[start_server(server) for server in servers])
 
+
 async def start_server(server):
     try:
-        response = await asyncio.to_thread(
-            requests.post,
-            f"http://localhost:3000/api/servers/{server['uid']}/start",
-            data={""},
-            auth=(PANEL_LOGIN, PANEL_PASSWORD),
-            timeout=6
-        )
+        response = await asyncio.to_thread(requests.post, f"http://localhost:3000/api/servers/{server['uid']}/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
         if response.status_code == requests.codes.ok:
             logger.info(f"{server['title']} ({server['uid']}) (SUCCESS) Server start command received.")
             return
     except requests.exceptions.RequestException:
         pass
     logger.info(f"{server['title']} ({server['uid']}) (FAILED) Server could be offline.")
+
 
 #######################################################
 
@@ -459,7 +481,7 @@ if __name__ == "__main__":
     if args.discord:
         logger.info("Discord notifications are disabled, no notifications will be sent.")
 
-    #Cleanup logs
+    # Cleanup logs
     logger.info("Cleaning up old log files...")
     clean_logs()
 
@@ -467,7 +489,7 @@ if __name__ == "__main__":
     if not os.path.isfile(f"{PATH_BASE}.running"):
         Path(f"{PATH_BASE}.running").touch()
 
-        #Get pending update mods
+        # Get pending update mods
         asyncio.run(get_pending_mods())
         print(pending_mods)
         if pending_mods or args.symlink or os.path.isfile(f"{PATH_BASE}.symlink_pending"):
