@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib import request
 import a2s
@@ -114,7 +114,8 @@ async def get_workshop_version(mod_id):
 
     details = result["response"]["publishedfiledetails"][0]
     try:
-        return datetime.utcfromtimestamp(details["time_updated"])
+        # minus 1 hour for timezone difference
+        return datetime.utcfromtimestamp(details["time_updated"]) + timedelta(hours=1)
     except Exception:
         return datetime(1, 1, 1, 0, 0)
 
