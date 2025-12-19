@@ -1,961 +1,367 @@
-class Player1
-
+class Session
+{
+	mission="adv_war_atlas_part4";
+	island="zargabad";
+	gameType="Coop";
+	duration=8057.9893;
+	class Player1
 	{
-
-		name="Kaelies [AM 2]";
-
-		killsInfantry=99;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=99;
-
-		killed=0;
-
-	};
-
-	class Player2
-
-	{
-
-		name="Chris [SN DC]";
-
-		killsInfantry=56;
-
-		killsSoft=2;
-
-		killsArmor=6;
-
-		killsAir=-1;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=73;
-
-		killed=2;
-
-	};
-
-	class Player3
-
-	{
-
-		name="Holappa [AM 2]";
-
-		killsInfantry=50;
-
-		killsSoft=2;
-
-		killsArmor=5;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=69;
-
-		killed=1;
-
-	};
-
-	class Player4
-
-	{
-
-		name="Zizoor [AM 2]";
-
-		killsInfantry=46;
-
-		killsSoft=3;
-
-		killsArmor=2;
-
-		killsAir=2;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=68;
-
-		killed=0;
-
-	};
-
-	class Player5
-
-	{
-
-		name="Datafire [AM 2]";
-
-		killsInfantry=57;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=57;
-
-		killed=0;
-
-	};
-
-	class Player6
-
-	{
-
-		name="TimHawk [AM 2]";
-
-		killsInfantry=18;
-
-		killsSoft=1;
-
-		killsArmor=11;
-
-		killsAir=-1;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=48;
-
-		killed=4;
-
-	};
-
-	class Player7
-
-	{
-
-		name="Namoral [RPG]";
-
-		killsInfantry=34;
-
-		killsSoft=1;
-
+		name="TimHawk [AM 2PL]";
+		killsInfantry=136;
+		killsSoft=4;
 		killsArmor=1;
-
-		killsAir=1;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=44;
-
-		killed=2;
-
-	};
-
-	class Player8
-
-	{
-
-		name="Asru [AM 2]";
-
-		killsInfantry=38;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=1;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=43;
-
-		killed=0;
-
-	};
-
-	class Player9
-
-	{
-
-		name="Spotlessnest [BA HDI]";
-
-		killsInfantry=32;
-
-		killsSoft=0;
-
-		killsArmor=2;
-
 		killsAir=0;
-
 		killsPlayers=0;
-
 		customScore=0;
-
-		killsTotal=38;
-
-		killed=2;
-
+		killsTotal=147;
+		killed=1;
 	};
-
-	class Player10
-
+	class Player2
 	{
-
-		name="MaverickSabre [AM DC]";
-
-		killsInfantry=37;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=37;
-
-		killed=2;
-
-	};
-
-	class Player11
-
-	{
-
-		name="Flay [AM 2]";
-
-		killsInfantry=27;
-
-		killsSoft=2;
-
-		killsArmor=2;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=37;
-
-		killed=5;
-
-	};
-
-	class Player12
-
-	{
-
 		name="Boberrmann [AM 2]";
-
-		killsInfantry=36;
-
+		killsInfantry=85;
 		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
+		killsArmor=8;
+		killsAir=1;
+		killsPlayers=1;
 		customScore=0;
-
-		killsTotal=36;
-
-		killed=5;
-
-	};
-
-	class Player13
-
-	{
-
-		name="ModernMage [AM 2]";
-
-		killsInfantry=34;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=34;
-
-		killed=3;
-
-	};
-
-	class Player14
-
-	{
-
-		name="retri [RPG CO]";
-
-		killsInfantry=29;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=29;
-
-		killed=1;
-
-	};
-
-	class Player15
-
-	{
-
-		name="HeyNobody [AM 2]";
-
-		killsInfantry=22;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=22;
-
+		killsTotal=114;
 		killed=0;
-
 	};
-
-	class Player16
-
+	class Player3
 	{
-
-		name="Mortin [AM2]";
-
-		killsInfantry=21;
-
+		name="Datafire [AM 2]";
+		killsInfantry=87;
 		killsSoft=0;
-
 		killsArmor=0;
-
 		killsAir=0;
-
 		killsPlayers=0;
-
 		customScore=0;
-
-		killsTotal=21;
-
-		killed=1;
-
-	};
-
-	class Player17
-
-	{
-
-		name="Fear [AM 2SL]";
-
-		killsInfantry=20;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=20;
-
+		killsTotal=87;
 		killed=0;
-
 	};
-
-	class Player18
-
+	class Player4
 	{
-
-		name="Birb [AM 2]";
-
-		killsInfantry=19;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=19;
-
-		killed=1;
-
-	};
-
-	class Player19
-
-	{
-
-		name="SweffNL [AM 2FL]";
-
-		killsInfantry=13;
-
-		killsSoft=2;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=17;
-
-		killed=1;
-
-	};
-
-	class Player20
-
-	{
-
-		name="IrateIrohL [AM 2]";
-
-		killsInfantry=17;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=17;
-
-		killed=2;
-
-	};
-
-	class Player21
-
-	{
-
-		name="doomedtnt [CC 2CLC]";
-
-		killsInfantry=16;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=16;
-
-		killed=0;
-
-	};
-
-	class Player22
-
-	{
-
-		name="Almerra [AM 2]";
-
-		killsInfantry=15;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=15;
-
-		killed=0;
-
-	};
-
-	class Player23
-
-	{
-
-		name="CrepeApe [AM 2]";
-
-		killsInfantry=15;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=15;
-
-		killed=0;
-
-	};
-
-	class Player24
-
-	{
-
-		name="DingoControl [AM 2]";
-
-		killsInfantry=12;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=12;
-
-		killed=0;
-
-	};
-
-	class Player25
-
-	{
-
-		name="Propx [AM 2]";
-
-		killsInfantry=12;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=12;
-
-		killed=0;
-
-	};
-
-	class Player26
-
-	{
-
-		name="Graf von Scyth [AM2]";
-
-		killsInfantry=8;
-
-		killsSoft=1;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=10;
-
-		killed=0;
-
-	};
-
-	class Player27
-
-	{
-
-		name="GanX [AM 2SL]";
-
-		killsInfantry=9;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=9;
-
-		killed=0;
-
-	};
-
-	class Player28
-
-	{
-
-		name="Vollantix [AM 2SL]";
-
-		killsInfantry=7;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=7;
-
-		killed=0;
-
-	};
-
-	class Player29
-
-	{
-
-		name="RUGAN [AM2]";
-
-		killsInfantry=7;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=7;
-
-		killed=1;
-
-	};
-
-	class Player30
-
-	{
-
-		name="GamingEnding[AM 2DI]";
-
-		killsInfantry=6;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=6;
-
-		killed=2;
-
-	};
-
-	class Player31
-
-	{
-
-		name="Koleisus [AM 2]";
-
-		killsInfantry=4;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=4;
-
-		killed=2;
-
-	};
-
-	class Player32
-
-	{
-
-		name="VAGI [AM2]";
-
-		killsInfantry=3;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=3;
-
-		killed=2;
-
-	};
-
-	class Player33
-
-	{
-
 		name="Aleksander [AM 2]";
-
-		killsInfantry=2;
-
+		killsInfantry=66;
 		killsSoft=0;
-
 		killsArmor=0;
-
 		killsAir=0;
-
 		killsPlayers=0;
-
 		customScore=0;
-
-		killsTotal=2;
-
+		killsTotal=66;
+		killed=0;
+	};
+	class Player5
+	{
+		name="SweffNL [AM 2FL]";
+		killsInfantry=60;
+		killsSoft=0;
+		killsArmor=2;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=66;
+		killed=2;
+	};
+	class Player6
+	{
+		name="Graf von Scyth [AM2]";
+		killsInfantry=102;
+		killsSoft=0;
+		killsArmor=1;
+		killsAir=-8;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=65;
+		killed=0;
+	};
+	class Player7
+	{
+		name="Flay [AM 2]";
+		killsInfantry=55;
+		killsSoft=1;
+		killsArmor=2;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=63;
 		killed=1;
-
 	};
-
-	class Player34
-
+	class Player8
 	{
-
-		name="ConnorLO [AM DO]";
-
-		killsInfantry=0;
-
+		name="Zizoor [AM 2]";
+		killsInfantry=62;
 		killsSoft=0;
-
 		killsArmor=0;
-
 		killsAir=0;
-
 		killsPlayers=0;
-
 		customScore=0;
-
-		killsTotal=0;
-
-		killed=0;
-
-	};
-
-	class Player35
-
-	{
-
-		name="DustyEllis [AM 2]";
-
-		killsInfantry=0;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=0;
-
-		killed=0;
-
-	};
-
-	class Player36
-
-	{
-
-		name="headlessclient";
-
-		killsInfantry=0;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=0;
-
-		killed=0;
-
-	};
-
-	class Player37
-
-	{
-
-		name="vBee [BB CO]";
-
-		killsInfantry=0;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=0;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=0;
-
+		killsTotal=62;
 		killed=1;
-
 	};
-
-	class Player38
-
+	class Player9
 	{
-
+		name="TheDaveinator [AM 2PS]";
+		killsInfantry=33;
+		killsSoft=0;
+		killsArmor=2;
+		killsAir=4;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=59;
+		killed=1;
+	};
+	class Player10
+	{
+		name="HeyNobody [AM 2]";
+		killsInfantry=58;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=58;
+		killed=1;
+	};
+	class Player11
+	{
+		name="BalintHUN";
+		killsInfantry=54;
+		killsSoft=0;
+		killsArmor=1;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=57;
+		killed=1;
+	};
+	class Player12
+	{
+		name="GanX [AM 2SL]";
+		killsInfantry=38;
+		killsSoft=0;
+		killsArmor=2;
+		killsAir=1;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=49;
+		killed=1;
+	};
+	class Player13
+	{
+		name="Mortin [AM2]";
+		killsInfantry=34;
+		killsSoft=0;
+		killsArmor=3;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=43;
+		killed=1;
+	};
+	class Player14
+	{
+		name="DingoControl [AM 2]";
+		killsInfantry=41;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=41;
+		killed=1;
+	};
+	class Player15
+	{
+		name="doomedtnt [CC 2CLC]";
+		killsInfantry=37;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=37;
+		killed=0;
+	};
+	class Player16
+	{
+		name="Medley [AM 2]";
+		killsInfantry=34;
+		killsSoft=0;
+		killsArmor=1;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=37;
+		killed=1;
+	};
+	class Player17
+	{
+		name="Prophet [CC SNLC]";
+		killsInfantry=26;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=26;
+		killed=0;
+	};
+	class Player18
+	{
+		name="Propx [AM 2]";
+		killsInfantry=24;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=24;
+		killed=0;
+	};
+	class Player19
+	{
 		name="HBTurpin [AM 2SA]";
-
-		killsInfantry=3;
-
+		killsInfantry=19;
 		killsSoft=0;
-
 		killsArmor=0;
-
-		killsAir=-1;
-
-		killsPlayers=0;
-
-		customScore=0;
-
-		killsTotal=-2;
-
-		killed=0;
-
-	};
-
-	class Player39
-
-	{
-
-		name="NotASheep [AM 2SO]";
-
-		killsInfantry=-5;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
 		killsAir=0;
-
-		killsPlayers=-4;
-
-		customScore=0;
-
-		killsTotal=-5;
-
-		killed=0;
-
-	};
-
-	class Player40
-
-	{
-
-		name="TheDaveinator [AM 2PL]";
-
-		killsInfantry=0;
-
-		killsSoft=0;
-
-		killsArmor=0;
-
-		killsAir=-1;
-
 		killsPlayers=0;
-
 		customScore=0;
-
-		killsTotal=-5;
-
-		killed=0;
-
+		killsTotal=19;
+		killed=4;
 	};
-
+	class Player20
+	{
+		name="voodoodat [AM 2FL]";
+		killsInfantry=17;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=17;
+		killed=0;
+	};
+	class Player21
+	{
+		name="Almerra [AM 2ST]";
+		killsInfantry=16;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=16;
+		killed=2;
+	};
+	class Player22
+	{
+		name="Asru [AM 2]";
+		killsInfantry=12;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=12;
+		killed=0;
+	};
+	class Player23
+	{
+		name="Birb [AM 2]";
+		killsInfantry=8;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=8;
+		killed=1;
+	};
+	class Player24
+	{
+		name="ConnorLO[AM DO]";
+		killsInfantry=0;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=1;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=5;
+		killed=0;
+	};
+	class Player25
+	{
+		name="headlessclient";
+		killsInfantry=0;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=0;
+		killed=0;
+	};
+	class Player26
+	{
+		name="vBee [BB CO]";
+		killsInfantry=0;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=0;
+		killed=0;
+	};
+	class Player27
+	{
+		name="Jonathan Irons";
+		killsInfantry=0;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=0;
+		killed=1;
+	};
+	class Player28
+	{
+		name="Vollantix [AM 2SL]";
+		killsInfantry=0;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=0;
+		killed=1;
+	};
+	class Player29
+	{
+		name="Hazed [AM 2FS]";
+		killsInfantry=-1;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=0;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=-1;
+		killed=0;
+	};
+	class Player30
+	{
+		name="DustyEllis [AM 2]";
+		killsInfantry=5;
+		killsSoft=0;
+		killsArmor=0;
+		killsAir=-2;
+		killsPlayers=0;
+		customScore=0;
+		killsTotal=-5;
+		killed=2;
+	};
 };
