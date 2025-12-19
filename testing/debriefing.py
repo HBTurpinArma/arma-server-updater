@@ -63,7 +63,7 @@ def create_image_summary():
     draw.text((753, 132), f"{civilian_casualties}", fill=(255, 255, 255), font=header_number_font, align="right", anchor="rm")
 
     #Setup the mission name at the top
-    mission_name = "Operation Guiding Light".upper()  # Placeholder mission name
+    mission_name = "Atlas War Finale".upper()  # Placeholder mission name
     draw.text((img.width // 2, 102), mission_name, fill=(255, 255, 255), font=mission_name_font, anchor="mm")
 
 
