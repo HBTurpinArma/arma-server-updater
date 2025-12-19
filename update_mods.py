@@ -104,22 +104,6 @@ def clean_logs():
 
 #######################################################
 
-
-async def get_workshop_version(mod_id):
-    data = {"key": STEAM_API_KEY, "itemcount": 1, "publishedfileids[0]": mod_id, }
-    async with aiohttp.ClientSession() as session:
-        async with session.post("https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/", data=data) as resp:
-            resp.raise_for_status()
-            result = await resp.json()
-
-    details = result["response"]["publishedfiledetails"][0]
-    try:
-        # minus 1 hour for timezone difference
-        return datetime.utcfromtimestamp(details["time_updated"]) + timedelta(hours=1)
-    except Exception:
-        return datetime(1, 1, 1, 0, 0)
-
-
 def get_workshop_changelog(mod_id):
     PATTERN = re.compile(r"workshopAnnouncement.*?<p .*?\>(.*?)</p>", re.DOTALL)
     CLEANHTML = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
@@ -131,66 +115,77 @@ def get_workshop_changelog(mod_id):
         return re.sub(CLEANHTML, '', match.group(1).replace("<br>", "\n").replace("</b>", "\n"))
     return ""
 
+async def get_update_state_from_mod_list(mods: list[dict]) -> list[dict]:
+    # Empty array we will return with mod update details
+    mods_return = mods
 
-async def get_current_version(mod_id, path):
-    mod_path = "{}/{}".format(path, mod_id)
-    if os.path.isdir(mod_path):
-        meta_file = "{}/meta.cpp".format(mod_path)
-        mod_file = "{}/mod.cpp".format(mod_path)
-        if os.path.isfile(meta_file):
-            return datetime.fromtimestamp(os.path.getmtime(meta_file))
-        elif os.path.isfile(mod_file):
-            return datetime.fromtimestamp(os.path.getmtime(mod_file))
-    return datetime(1, 1, 1, 0, 0)
+    # First get all the mod details from Steam API for each mod ID in mod_ids
+    data = {
+        "key": STEAM_API_KEY,
+        "itemcount": len(mods)
+    }
 
+    for index, mod in enumerate(mods):
+        data[f"publishedfileids[{index}]"] = mod["ID"]
 
-async def is_mod_updated(mod_id, path):
-    workshop_version = await get_workshop_version(mod_id)
-    logger.info(" Checking https://steamcommunity.com/sharedfiles/filedetails/changelog/{}".format(mod_id))
-    logger.info("   Latest Version Found: {}".format(workshop_version))
-    current_version = await get_current_version(mod_id, path)
-    logger.info(" Checking {}{}".format(path, mod_id))
-    logger.info("   Current Version Found: {}".format(current_version))
-    if current_version == datetime(1, 1, 1, 0, 0):
-        logger.info("   No current version found, assuming update is required.")
-        return False
-    if workshop_version == datetime(1, 1, 1, 0, 0):  # Workshop version can't be found - likely is removed/hidden. No need to keep updating so return true.
-        logger.info("   Couldn't obtain workshop version, suggesting no update is required.")
-        return True
-    if current_version:
-        return (current_version > workshop_version)  # do we have the most recent file?
-    return False
+    async with aiohttp.ClientSession() as session:
+        async with session.post("https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/", data=data) as resp:
+            resp.raise_for_status()
+            result = await resp.json()
+
+    details_list = result["response"]["publishedfiledetails"]
+
+    for index, details in enumerate(details_list):
+        try:
+            mods_return[index]["update_date"] = datetime.datetime.fromtimestamp(details["time_updated"], datetime.UTC) + timedelta(hours=1)
+        except Exception:
+            mods_return[index]["update_date"] = datetime(1, 1, 1, 0, 0)
+
+    # Second get the current mod versions from local files
+    for index, mod in enumerate(mods):
+        mod_path = os.path.join(PATH_STAGING_MODS, mod["ID"])
+        if os.path.isdir(mod_path):
+            meta_file = "{}/meta.cpp".format(mod_path)
+            mod_file = "{}/mod.cpp".format(mod_path)
+            if os.path.isfile(meta_file):
+                mods_return[index]["current_date"] = datetime.fromtimestamp(os.path.getmtime(meta_file))
+            elif os.path.isfile(mod_file):
+                mods_return[index]["current_date"] = datetime.fromtimestamp(os.path.getmtime(mod_file))
+            else:
+                mods_return[index]["current_date"] = datetime(1, 1, 1, 0, 0)
+        else:
+            mods_return[index]["current_date"] = datetime(1, 1, 1, 0, 0)
+
+    # Now compare the two dates and determine if an update is needed
+    for index, mod in enumerate(mods):
+        workshop_date = mods_return[index]["update_date"]
+        current_date = mods_return[index]["current_date"]
+        if current_date == datetime(1, 1, 1, 0, 0):
+            mods_return[index]["needs_update"] = True
+        elif workshop_date == datetime(1, 1, 1, 0, 0):
+            mods_return[index]["needs_update"] = False
+        else:
+            mods_return[index]["needs_update"] = (current_date < workshop_date)
+
+    return mods_return
 
 
 pending_mods = []
-
 
 async def get_pending_mods():
     # tasks = []  # List to hold tasks
     for file in os.listdir(PATH_PRESETS):
         if file.endswith(".html"):
-            # log("Reading Mod Preset (" + file + ")")
+            log("Reading Mod Preset (" + file + ")")
             mods = loadMods(os.path.join(PATH_PRESETS, file))
+            mods = await get_update_state_from_mod_list(mods)
+
             for mod in mods:
-                mod_id_path = os.path.join(PATH_STAGING_MODS, mod["ID"])
-                if os.path.isdir(mod_id_path):
-                    # Create a task for checking if the mod needs to be updated
-                    # tasks.append(check_mod_update(mod, mod_id_path))
-                    await check_mod_update(mod, mod_id_path)
-                else:
-                    logger.info("No file found, grabbing mod \"{}\" ({})".format(mod["name"], mod["ID"]))
-                    pending_mods.append(mod)
+                if mod["needs_update"]:
+                    logger.info("Mod Pending Update: {} (@{})".format(mod["name"], mod["ID"]))
+                    if mod not in pending_mods:
+                        pending_mods.append(mod)
 
-    # Await all the tasks  # await asyncio.gather(*tasks)
-
-
-async def check_mod_update(mod, mod_id_path):
-    if not await is_mod_updated(mod["ID"], PATH_STAGING_MODS) or args.force:
-        logger.info("Update required for \"{}\" ({}) \n".format(mod["name"], mod["ID"]))
-        if mod not in pending_mods:
-            pending_mods.append(mod)
-    else:
-        logger.info("No update required for \"{}\" ({})... SKIPPING \n".format(mod["name"], mod["ID"]))
 
 
 #######################################################
@@ -362,8 +357,8 @@ async def notify_updated_mods(mods):
                                 color='2121cc')
         workshopChangelog = get_workshop_changelog(mod["ID"])[:1000] + "..."
         modEmbed.add_embed_field(name='Latest Changelog', value=str(workshopChangelog) or "", inline=False)
-        modEmbed.add_embed_field(name='Previous Version', value=str(await get_current_version(mod["ID"], PATH_STAGING_MODS) or ""))
-        modEmbed.add_embed_field(name='Workshop Version', value=str(await get_workshop_version(mod["ID"])) or "")
+        modEmbed.add_embed_field(name='Previous Version', value=str(mod["current_date"]) or "")
+        modEmbed.add_embed_field(name='Workshop Version', value=str(mod["update_date"]) or "")
         # modEmbed.set_footer(text='Required by ' + preset)
         modHook.add_embed(modEmbed)
         # Obtain current size of embed for limit checking
@@ -492,7 +487,7 @@ if __name__ == "__main__":
 
         # Get pending update mods
         asyncio.run(get_pending_mods())
-        print(pending_mods)
+
         if pending_mods or args.symlink or os.path.isfile(f"{PATH_BASE}.symlink_pending"):
             # Check which presets are affected from updated mods as the whole preset gets symlinked.
             pending_presets = get_pending_presets(pending_mods)
