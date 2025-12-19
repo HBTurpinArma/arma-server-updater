@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 from urllib import request
 import a2s
@@ -142,9 +142,10 @@ async def get_update_state_from_mod_list(mods: list[dict]) -> list[dict]:
 
     for index, details in enumerate(details_list):
         try:
-            mods_return[index]["update_date"] = datetime.datetime.fromtimestamp(details["time_updated"], datetime.UTC) + timedelta(hours=1)
-        except Exception:
+            mods_return[index]["update_date"] = datetime.fromtimestamp(details["time_updated"], UTC)
+        except Exception as e:
             mods_return[index]["update_date"] = datetime(1, 1, 1, 0, 0)
+
 
     # Second get the current mod versions from local files
     for index, mod in enumerate(mods):
@@ -153,9 +154,9 @@ async def get_update_state_from_mod_list(mods: list[dict]) -> list[dict]:
             meta_file = "{}/meta.cpp".format(mod_path)
             mod_file = "{}/mod.cpp".format(mod_path)
             if os.path.isfile(meta_file):
-                mods_return[index]["current_date"] = datetime.fromtimestamp(os.path.getmtime(meta_file))
+                mods_return[index]["current_date"] = datetime.fromtimestamp(os.path.getmtime(meta_file), UTC)
             elif os.path.isfile(mod_file):
-                mods_return[index]["current_date"] = datetime.fromtimestamp(os.path.getmtime(mod_file))
+                mods_return[index]["current_date"] = datetime.fromtimestamp(os.path.getmtime(mod_file), UTC)
             else:
                 mods_return[index]["current_date"] = datetime(1, 1, 1, 0, 0)
         else:
@@ -169,6 +170,7 @@ async def get_update_state_from_mod_list(mods: list[dict]) -> list[dict]:
             mods_return[index]["needs_update"] = True
         elif workshop_date == datetime(1, 1, 1, 0, 0):
             mods_return[index]["needs_update"] = False
+            logger.info(f"Could not load workshop info for {mod["name"]} ({mod["ID"]}), does this mod still exist or are we rate limited?")
         else:
             mods_return[index]["needs_update"] = (current_date < workshop_date)
 
@@ -188,6 +190,7 @@ async def get_pending_mods():
             for mod in mods:
                 if mod["needs_update"]:
                     logger.info("Mod Pending Update: {} (@{})".format(mod["name"], mod["ID"]))
+                    logger.info(mod)
                     if mod not in pending_mods:
                         pending_mods.append(mod)
 
