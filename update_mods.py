@@ -108,12 +108,17 @@ def get_workshop_changelog(mod_id):
     PATTERN = re.compile(r"workshopAnnouncement.*?<p .*?\>(.*?)</p>", re.DOTALL)
     CLEANHTML = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
     WORKSHOP_CHANGELOG_URL = "https://steamcommunity.com/sharedfiles/filedetails/changelog"
-    response = request.urlopen("{}/{}".format(WORKSHOP_CHANGELOG_URL, mod_id)).read()
-    response = response.decode("utf-8")
-    match = PATTERN.search(response)
-    if match:
-        return re.sub(CLEANHTML, '', match.group(1).replace("<br>", "\n").replace("</b>", "\n"))
-    return ""
+
+    try:
+        response = request.urlopen("{}/{}".format(WORKSHOP_CHANGELOG_URL, mod_id)).read()
+        response = response.decode("utf-8")
+        match = PATTERN.search(response)
+        if match:
+            return re.sub(CLEANHTML, '', match.group(1).replace("<br>", "\n").replace("</b>", "\n"))
+        return ""
+    except Exception as e:
+        logger.error(f"Error fetching changelog for mod {mod_id}: {e}")
+        return "Could not fetch changelog, check workshop page instead."
 
 async def get_update_state_from_mod_list(mods: list[dict]) -> list[dict]:
     # Empty array we will return with mod update details
