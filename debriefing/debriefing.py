@@ -96,6 +96,11 @@ def get_kill_data(file_path=None):
             "score": int(total_score.group(1)) if total_score else 0,
             "deaths": int(total_deaths.group(1)) if total_deaths else 0
         }
+
+        #Skip headless clients
+        if "headlessclient" in name.group(1):
+            continue
+
         kill_data[name.group(1)] = player_data
 
     return kill_data
