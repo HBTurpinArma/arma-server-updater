@@ -25,7 +25,7 @@ import pandas
 import csv
 
 #######################################################
-config = dotenv_values("../.env")
+config = dotenv_values("../../.env")
 
 PATH_BASE = config["PATH_BASE"]
 PATH_STAGING = config["PATH_STAGING"]
@@ -118,7 +118,7 @@ if __name__ == "__main__":
                 mods.append(mod)
 
             keys = mods[0].keys()
-            with open(f'../preview/{preset[:-5]}.csv', 'w', newline='') as output_file:
+            with open(f'{preset[:-5]}.csv', 'w', newline='') as output_file:
                 dict_writer = csv.DictWriter(output_file, keys)
                 dict_writer.writeheader()
                 dict_writer.writerows(mods)

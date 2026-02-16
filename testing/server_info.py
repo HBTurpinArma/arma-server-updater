@@ -1,6 +1,6 @@
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
-webhook = ""
+webhook = "https://discord.com/api/webhooks/1470182249591734283/U6qbp5KlPJq_WXxNTjMsxipSYofNQQd58NyPsBZdOWbtiOLBY6vXIA3W3BHeAvfn6eS0"
 
 sog_non_cdlc_owner_link = "https://drive.google.com/file/d/1bTUDmnRW2amZm7uKz2ShikutPv3aJrKn/view?usp=drive_link"
 sog_cdlc_owner_link = "https://drive.google.com/file/d/1TUKsKJuXpNWNIGCUOgtgEAqjPE-kcjPP/view?usp=drive_link"
@@ -15,16 +15,14 @@ am2_cdlc_owner_link_direct = "https://drive.google.com/uc?export=download&id=1Zl
 
 am2_battalion=[
     [
-        "` Battalion`",
-        "`     Alpha`",
-        "`     Bravo`",
-        "`   Charlie`",
+        "` Operation #1`",
+        "` Operation #2`",
+        "` Operation #3`",
         "`       CTC`",
         "`       RHQ`",
         "`       RNR`"
     ],
     [
-        "`am2.taw.net` : `2302`",
         "`am2.taw.net` : `2302`",
         "`am2.taw.net` : `2352`",
         "`am2.taw.net` : `2402`",
@@ -33,7 +31,6 @@ am2_battalion=[
         "`am2.taw.net` : `2602`",
     ],
     [
-        "`AM2`",
         "`AM2`",
         "`AM2`",
         "`AM2`",
@@ -122,16 +119,16 @@ if __name__ == "__main__":
     publicServersEmbed.add_embed_field(name="PASSWORD", value="\n".join(public[2]))
 
 
-    battalionHook = DiscordWebhook(url=webhook)
-    battalionHook.add_embed(am2ModpackEmbed)
-    battalionHook.add_embed(am2ServersEmbed)
-    battalionHook.add_embed(am3ServersEmbed)
-    battalionHookResponse = battalionHook.execute()
-
-    battalionHook = DiscordWebhook(url=webhook)
-    battalionHook.add_embed(vietnamModpackEmbed)
-    battalionHook.add_embed(vietnamServersEmbed)
-    battalionHookResponse = battalionHook.execute()
+    # battalionHook = DiscordWebhook(url=webhook)
+    # battalionHook.add_embed(am2ModpackEmbed)
+    # battalionHook.add_embed(am2ServersEmbed)
+    # battalionHook.add_embed(am3ServersEmbed)
+    # battalionHookResponse = battalionHook.execute()
+    #
+    # battalionHook = DiscordWebhook(url=webhook)
+    # battalionHook.add_embed(vietnamModpackEmbed)
+    # battalionHook.add_embed(vietnamServersEmbed)
+    # battalionHookResponse = battalionHook.execute()
 
     battalionHook = DiscordWebhook(url=webhook)
     battalionHook.add_embed(publicServersEmbed)
