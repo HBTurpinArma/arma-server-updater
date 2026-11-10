@@ -13,6 +13,7 @@ import a2s
 import requests
 from discord_webhook import DiscordWebhook, DiscordEmbed
 from dotenv import dotenv_values
+from panel_client import PanelClient
 
 #######################################################
 
@@ -86,25 +87,21 @@ def clean_logs():
 
 #######################################################
 
-async def stop_servers(servers):
+async def stop_servers(servers, panel):
     # Run all stop_server coroutines concurrently
-    await asyncio.gather(*[stop_server(server) for server in servers])
+    await asyncio.gather(*[stop_server(server, panel) for server in servers])
 
-async def stop_server(server):
+async def stop_server(server, panel):
     try:
         response = await asyncio.to_thread(
-            requests.post,
-            f"http://localhost:3000/api/servers/{server['uid']}/stop",
-            data={""},
-            auth=(PANEL_LOGIN, PANEL_PASSWORD),
-            timeout=6
+            panel.post_server_action, server["uid"], "stop"
         )
         if response.status_code == requests.codes.ok:
             logger.info(f"{server['title']} ({server['uid']}) (SUCCESS) Server stop command received.")
             return
-    except requests.exceptions.RequestException:
-        pass
-    logger.info(f"{server['title']} ({server['uid']}) (FAILED) Server could be offline.")
+        logger.error(f"{server['title']} ({server['uid']}) (FAILED) Server stop returned HTTP {response.status_code}.")
+    except requests.exceptions.RequestException as exc:
+        logger.error(f"{server['title']} ({server['uid']}) (FAILED) Server stop request failed: {exc}")
 
 def get_online_players(servers):
     players = {}
@@ -191,9 +188,10 @@ if __name__ == "__main__":
         #Stop all servers
         log("Attempting to stop servers:")
         notify_stopping_servers()
-        asyncio.run(stop_servers(servers))
+        if servers:
+            panel = PanelClient(PANEL_IP, PANEL_LOGIN, PANEL_PASSWORD)
+            asyncio.run(stop_servers(servers, panel))
 
         #Update the game
         log("Attempting to update the game:")
         update_game()
-

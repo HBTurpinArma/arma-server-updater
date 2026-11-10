@@ -17,6 +17,7 @@ import aiohttp
 import requests
 from discord_webhook import DiscordWebhook, DiscordEmbed
 from dotenv import dotenv_values
+from panel_client import PanelClient
 from process_html import loadMods
 
 #######################################################
@@ -440,37 +441,37 @@ def get_online_players(servers):
 stopped_servers = []
 
 
-async def stop_pending_servers(servers):
+async def stop_pending_servers(servers, panel):
     # Run all stop_server coroutines concurrently
-    await asyncio.gather(*[stop_server(server) for server in servers])
+    await asyncio.gather(*[stop_server(server, panel) for server in servers])
 
 
-async def stop_server(server):
+async def stop_server(server, panel):
     try:
-        response = await asyncio.to_thread(requests.post, f"http://localhost:3000/api/servers/{server['uid']}/stop", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
+        response = await asyncio.to_thread(panel.post_server_action, server["uid"], "stop")
         if response.status_code == requests.codes.ok:
             stopped_servers.append(server)
             logger.info(f"{server['title']} ({server['uid']}) (SUCCESS) Server stop command received.")
             return
-    except requests.exceptions.RequestException:
-        pass
-    logger.info(f"{server['title']} ({server['uid']}) (FAILED) Server could be offline.")
+        logger.error(f"{server['title']} ({server['uid']}) (FAILED) Server stop returned HTTP {response.status_code}.")
+    except requests.exceptions.RequestException as exc:
+        logger.error(f"{server['title']} ({server['uid']}) (FAILED) Server stop request failed: {exc}")
 
 
-async def start_stopped_servers(servers):
+async def start_stopped_servers(servers, panel):
     # Run all start_server coroutines concurrently
-    await asyncio.gather(*[start_server(server) for server in servers])
+    await asyncio.gather(*[start_server(server, panel) for server in servers])
 
 
-async def start_server(server):
+async def start_server(server, panel):
     try:
-        response = await asyncio.to_thread(requests.post, f"http://localhost:3000/api/servers/{server['uid']}/start", data={""}, auth=(PANEL_LOGIN, PANEL_PASSWORD), timeout=6)
+        response = await asyncio.to_thread(panel.post_server_action, server["uid"], "start")
         if response.status_code == requests.codes.ok:
             logger.info(f"{server['title']} ({server['uid']}) (SUCCESS) Server start command received.")
             return
-    except requests.exceptions.RequestException:
-        pass
-    logger.info(f"{server['title']} ({server['uid']}) (FAILED) Server could be offline.")
+        logger.error(f"{server['title']} ({server['uid']}) (FAILED) Server start returned HTTP {response.status_code}.")
+    except requests.exceptions.RequestException as exc:
+        logger.error(f"{server['title']} ({server['uid']}) (FAILED) Server start request failed: {exc}")
 
 
 #######################################################
@@ -521,7 +522,8 @@ if __name__ == "__main__":
                 # Players no longer online, so we can stop the servers and copy over/symlink the updated mod folders.
                 log("Attempting to stop servers:")
                 if pending_servers:
-                    asyncio.run(stop_pending_servers(pending_servers))
+                    panel = PanelClient(PANEL_IP, PANEL_LOGIN, PANEL_PASSWORD)
+                    asyncio.run(stop_pending_servers(pending_servers, panel))
                     notify_stopping_server(stopped_servers)
                 else:
                     logger.info("No pending servers to stop, skipping...")
@@ -555,7 +557,7 @@ if __name__ == "__main__":
                 # Attempt to start all servers that had been stopped previously
                 log(f"Attempting to start servers:")
                 if stopped_servers:
-                    asyncio.run(start_stopped_servers(stopped_servers))
+                    asyncio.run(start_stopped_servers(stopped_servers, panel))
                     notify_starting_server(stopped_servers)
                 else:
                     logger.info("No servers to start, skipping...")
