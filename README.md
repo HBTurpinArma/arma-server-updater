@@ -1,2 +1,0 @@
-# arma-server-updater
- 
