@@ -106,32 +106,29 @@ def get_kill_data(file_path=None):
     return kill_data
 
 def get_medal_data(file_path=None):
-    if file_path is not None:
-        with open(file_path, "r") as f:
-            data = f.read()
-    else:
-        # Search input folder for a .log file and read it in, if there are multiple log files read the most recent one
-        log_files = [f for f in os.listdir("input") if f.endswith(".rpt")]
-        if not log_files:
-            print("No log files found in input folder.")
-            return
-        latest_log_file = max(log_files, key=lambda f: os.path.getctime(os.path.join("input", f)))
-        with open(os.path.join("input", latest_log_file), "r") as f:
-            data = f.read()
+    # if file_path is not None:
+    #     with open(file_path, "r") as f:
+    #         data = f.read()
+    # else:
+    #     # Search input folder for a .log file and read it in, if there are multiple log files read the most recent one
+    #     log_files = [f for f in os.listdir("input") if f.endswith(".rpt")]
+    #     if not log_files:
+    #         print("No log files found in input folder.")
+    #         return
+    #     latest_log_file = max(log_files, key=lambda f: os.path.getctime(os.path.join("input", f)))
+    #     with open(os.path.join("input", latest_log_file), "r") as f:
+    #         data = f.read()
 
     # medal_data = {}
     #temporary hardcoded medal data until I can figure out how to parse it from the log files
     medal_data = {
-        "Blood Bank": {"medal": "Blood Bank", "name": "HBTurpin [AM 2]", "value": "100", "description": "With 8 bags of blood used", "image_path": "resources/medals/medal_generic.png"},
-        "Pincushion": {"medal": "Pincushion", "name": "HBTurpin [AM 2]", "value": "9", "description": "With 9 needle injections", "image_path": "resources/medals/medal_generic.png"},
-        "Bullet Magnet": {"medal": "Bullet Magnet", "name": "HBTurpin [AM 2]", "value": "50", "description": "With 50 wounds", "image_path": "resources/medals/medal_generic.png"},
-        "Longest Nap": {"medal": "Longest Nap", "name": "HBTurpin [AM 2]", "value": "220", "description": "220 seconds unconscious", "image_path": "resources/medals/medal_generic.png"},
-        "Blood Bank2": {"medal": "Blood Bank", "name": "HBTurpin [AM 2]", "value": "100", "description": "With 8 bags of blood used", "image_path": "resources/medals/medal_generic.png"},
-        "Pincushion2": {"medal": "Pincushion", "name": "HBTurpin [AM 2]", "value": "9", "description": "With 9 needle injections", "image_path": "resources/medals/medal_generic.png"},
-        "Bullet Magnet2": {"medal": "Bullet Magnet", "name": "HBTurpin [AM 2]", "value": "50", "description": "With 50 wounds", "image_path": "resources/medals/medal_generic.png"},
-        "Longest Nap2": {"medal": "Longest Nap", "name": "HBTurpin [AM 2]", "value": "220", "description": "220 seconds unconscious", "image_path": "resources/medals/medal_generic.png"},
+        # "Blood Bank": {"medal": "Blood Bank", "name": "Propx [AM 2]", "value": "100", "description": "With 8500ml of blood given", "image_path": "resources/medals/medal_generic.png"},
+        # "Pincushion": {"medal": "Pincushion", "name": "Fear [AM 2SL]", "value": "4", "description": "With 5 needle injections", "image_path": "resources/medals/medal_generic.png"},
+        # "Longest Nap": {"medal": "Longest Nap", "name": "UndeadSpartan[AM 2FL]", "value": "438", "description": "905 seconds unconscious", "image_path": "resources/medals/medal_generic.png"},
+        # "Frequent Flyer": {"medal": "Frequent Flyer", "name": "Datafire [AM 2]", "value": "6", "description": "4 times unconscious", "image_path": "resources/medals/medal_generic.png"},
+        # "Mummy Impression": {"medal": "Mummy Impression", "name": "Almerra [AM 2TS]", "value": "45", "description": "With 45 bandages", "image_path": "resources/medals/medal_generic.png"},
+        # "Trauma Queen/King": {"medal": "Trauma Queen/King", "name": "Propx [AM 2]", "value": "101", "description": "With 165 medical actions", "image_path": "resources/medals/medal_generic.png"},
     }
-
 
     return medal_data
 
