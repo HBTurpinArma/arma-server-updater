@@ -1,8 +1,13 @@
+import argparse
 import re
-from matplotlib import font_manager
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import json
 import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def resource_path(relative_path):
+    return os.path.join(SCRIPT_DIR, relative_path)
 
 def draw_blurred_rectangle(base_img, xy, fill, outline, outline_width=2, blur_radius: float = 2):
     # Create a transparent layer
@@ -27,43 +32,86 @@ def beautify_mission_name(raw_name):
     return ' '.join(word.capitalize() for word in words)
 
 def get_mission_name(file_path=None):
+    data = None
     if file_path is not None:
-        with open(file_path, "r") as f:
-            data = f.read()
+        source_path = file_path
+        if file_path.lower().endswith(".json"):
+            log_path = os.path.splitext(file_path)[0] + ".log"
+            if os.path.exists(log_path):
+                source_path = log_path
+        if source_path.lower().endswith(".log"):
+            with open(source_path, "r", encoding="utf-8", errors="replace") as f:
+                data = f.read()
     else:
-        # Search input folder for a .log file and read it in, if there are multiple log files read the most recent one
-        log_files = [f for f in os.listdir("input") if f.endswith(".log")]
+        input_dir = os.path.join(SCRIPT_DIR, "input")
+        log_files = [f for f in os.listdir(input_dir) if f.endswith(".log")]
         if not log_files:
             print("No log files found in input folder.")
-            return
-        latest_log_file = max(log_files, key=lambda f: os.path.getctime(os.path.join("input", f)))
-        with open(os.path.join("input", latest_log_file), "r") as f:
+            return "No Mission Name Found"
+        latest_log_file = max(log_files, key=lambda f: os.path.getctime(os.path.join(input_dir, f)))
+        with open(os.path.join(input_dir, latest_log_file), "r", encoding="utf-8", errors="replace") as f:
             data = f.read()
 
-    # Use regex to find the mission name in the log file, which is usually in the format: mission="mission_name"
-    match = re.search(r'mission="([^"]+)"', data)
+    if data:
+        match = re.search(r'mission="([^"]+)"', data, re.IGNORECASE)
+        if not match:
+            match = re.search(r'Loaded mission:\s*(\S+)', data, re.IGNORECASE)
+        if match:
+            mission_name = match.group(1)
+            print(f"Mission name found: {mission_name} -> {beautify_mission_name(mission_name)}")
+            return mission_name
 
-    if match:
-        mission_name = match.group(1)
-        print(f"Mission name found: {mission_name} -> {beautify_mission_name(mission_name)}")
-        return mission_name
-    else:
-        print("Mission name not found.")
-        return "No Mission Name Found"
+    print("Mission name not found.")
+    return "No Mission Name Found"
+
+
+def get_json_kill_data(file_path):
+    with open(file_path, "r", encoding="utf-8-sig") as f:
+        data = json.load(f)
+
+    kill_data = {}
+    for player_id, player in data.items():
+        if not isinstance(player, dict):
+            continue
+        combat = player.get("combat", {})
+        meta = player.get("meta", {})
+        name = meta.get("playerName") or player_id
+        if "headlessclient" in str(name).lower():
+            continue
+
+        infantry = int(combat.get("killsInfantry", 0) or 0)
+        soft = int(combat.get("killsSoft", 0) or 0)
+        armor = int(combat.get("killsArmored", 0) or 0)
+        air = int(combat.get("killsAir", 0) or 0)
+        kill_data[name] = {
+            "name": name,
+            "killsInfantry": infantry,
+            "killsSoft": soft,
+            "killsArmor": armor,
+            "killsAir": air,
+            "killsCivilian": int(combat.get("killsCivilian", 0) or 0),
+            "score": infantry + soft + armor + air,
+            "deaths": int(combat.get("deaths", 0) or 0)
+        }
+
+    return kill_data
 
 
 def get_kill_data(file_path=None):
+    if file_path is not None and file_path.lower().endswith(".json"):
+        return get_json_kill_data(file_path)
+
     if file_path is not None:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             data = f.read()
     else:
-        # Search input folder for a .log file and read it in, if there are multiple log files read the most recent one
-        log_files = [f for f in os.listdir("input") if f.endswith(".log")]
+        input_dir = os.path.join(SCRIPT_DIR, "input")
+        log_files = [f for f in os.listdir(input_dir) if f.endswith(".log")]
         if not log_files:
             print("No log files found in input folder.")
-            return
-        latest_log_file = max(log_files, key=lambda f: os.path.getctime(os.path.join("input", f)))
-        with open(os.path.join("input", latest_log_file), "r") as f:
+            return {}
+        latest_log_file = max(log_files, key=lambda f: os.path.getctime(os.path.join(input_dir, f)))
+        with open(os.path.join(input_dir, latest_log_file), "r", encoding="utf-8", errors="replace") as f:
             data = f.read()
 
     kill_data = {}
@@ -77,6 +125,7 @@ def get_kill_data(file_path=None):
         kills_soft = re.search(r'killsSoft\s*=\s*(\d+);', player_data)
         kills_armored = re.search(r'killsArmor\s*=\s*(\d+);', player_data)
         kills_air = re.search(r'killsAir\s*=\s*(\d+);', player_data)
+        kills_civilian = re.search(r'killsCivilian\s*=\s*(\d+);', player_data)
         total_score = re.search(r'killsTotal\s*=\s*(\d+);', player_data)
         total_deaths = re.search(r'killed\s*=\s*(\d+);', player_data)
 
@@ -93,6 +142,7 @@ def get_kill_data(file_path=None):
             "killsSoft": int(kills_soft.group(1)) if kills_soft else 0,
             "killsArmor": int(kills_armored.group(1)) if kills_armored else 0,
             "killsAir": int(kills_air.group(1)) if kills_air else 0,
+            "killsCivilian": int(kills_civilian.group(1)) if kills_civilian else 0,
             "score": int(total_score.group(1)) if total_score else 0,
             "deaths": int(total_deaths.group(1)) if total_deaths else 0
         }
@@ -106,47 +156,122 @@ def get_kill_data(file_path=None):
     return kill_data
 
 def get_medal_data(file_path=None):
-    # if file_path is not None:
-    #     with open(file_path, "r") as f:
-    #         data = f.read()
-    # else:
-    #     # Search input folder for a .log file and read it in, if there are multiple log files read the most recent one
-    #     log_files = [f for f in os.listdir("input") if f.endswith(".rpt")]
-    #     if not log_files:
-    #         print("No log files found in input folder.")
-    #         return
-    #     latest_log_file = max(log_files, key=lambda f: os.path.getctime(os.path.join("input", f)))
-    #     with open(os.path.join("input", latest_log_file), "r") as f:
-    #         data = f.read()
+    """Calculate in-game and debrief-only medals from the TAW stats export."""
+    if file_path is None:
+        input_dir = os.path.join(SCRIPT_DIR, "input")
+        json_files = [
+            os.path.join(input_dir, name)
+            for name in os.listdir(input_dir)
+            if name.lower().endswith(".json")
+        ]
+        if not json_files:
+            return {}
+        file_path = max(json_files, key=os.path.getctime)
+    elif file_path.lower().endswith(".log"):
+        json_path = os.path.splitext(file_path)[0] + ".json"
+        if not os.path.exists(json_path):
+            return {}
+        file_path = json_path
 
-    # medal_data = {}
-    #temporary hardcoded medal data until I can figure out how to parse it from the log files
-    medal_data = {
-        # "Blood Bank": {"medal": "Blood Bank", "name": "Propx [AM 2]", "value": "100", "description": "With 8500ml of blood given", "image_path": "resources/medals/medal_generic.png"},
-        # "Pincushion": {"medal": "Pincushion", "name": "Fear [AM 2SL]", "value": "4", "description": "With 5 needle injections", "image_path": "resources/medals/medal_generic.png"},
-        # "Longest Nap": {"medal": "Longest Nap", "name": "UndeadSpartan[AM 2FL]", "value": "438", "description": "905 seconds unconscious", "image_path": "resources/medals/medal_generic.png"},
-        # "Frequent Flyer": {"medal": "Frequent Flyer", "name": "Datafire [AM 2]", "value": "6", "description": "4 times unconscious", "image_path": "resources/medals/medal_generic.png"},
-        # "Mummy Impression": {"medal": "Mummy Impression", "name": "Almerra [AM 2TS]", "value": "45", "description": "With 45 bandages", "image_path": "resources/medals/medal_generic.png"},
-        # "Trauma Queen/King": {"medal": "Trauma Queen/King", "name": "Propx [AM 2]", "value": "101", "description": "With 165 medical actions", "image_path": "resources/medals/medal_generic.png"},
-    }
+    if not file_path.lower().endswith(".json"):
+        return {}
+
+    with open(file_path, "r", encoding="utf-8-sig") as f:
+        player_data = json.load(f)
+
+    players = []
+    for player_id, player in player_data.items():
+        if not isinstance(player, dict):
+            continue
+        meta = player.get("meta", {})
+        name = meta.get("playerName") or player_id
+        if "headlessclient" in str(name).lower():
+            continue
+        players.append({
+            "name": name,
+            "combat": player.get("combat") or {},
+            "medical": player.get("medical") or {},
+        })
+
+    def stat(player, category, key):
+        value = player[category].get(key, 0)
+        try:
+            return float(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    medical_actions = (
+        "medicalAEDApplied",
+        "medicalBandagesApplied",
+        "medicalCPRApplied",
+        "medicalInjectionsApplied",
+        "medicalMedicationApplied",
+        "medicalPAKApplied",
+        "medicalSplintApplied",
+        "medicalSurgeryApplied",
+        "medicalTourniquetsApplied",
+    )
+    awards = (
+        ("Blood Bank", "medical", "medicalBloodApplied", "ml of blood given", 1000, False),
+        ("Pincushion", "medical", "medicalInjectionsRecieved", "injections received", 3, False),
+        ("Longest Nap", "medical", "unconsciousTime", "seconds unconscious", 240, False),
+        ("Frequent Flyer", "medical", "unconsciousCount", "times unconscious", 2, False),
+        ("Mummy Impression", "medical", "medicalBandagesRecieved", "bandages received", 30, False),
+        ("Trauma Queen/King", "medical_actions", None, "medical actions", 20, False),
+        ("Long Shot", "combat", "killsLongest", "meters for longest kill", 300, True),
+        ("Drone Hunter", "combat", "killsDrones", "drone kills", 3, False),
+        ("Tank Buster", "combat", "killsArmored", "armored kills", 3, False),
+        ("Bullet Magnet", "medical", "woundsReceived", "wounds received", 10, True),
+        ("Death Wish", "combat", "deaths", "deaths", 2, True),
+        ("Vampire", "medical", "medicalBloodDrawnApplied", "ml of blood drawn", 500, True),
+        ("Sharpshooter", "combat", "hitHeadshots", "headshots", 5, True),
+        ("Trigger Happy", "combat", "firedCount", "shots fired", 100, True),
+        ("War Criminal", "combat", "killsCivilian", "civilian kills", 0, True),
+        ("Human Colander", "medical", "totalBloodLoss", "ml of blood lost", 2000, True),
+    )
+
+    medal_data = {}
+    image_path = resource_path("resources/medals/medal_generic.png")
+    for medal_name, category, key, description, minimum, strict_minimum in awards:
+        if not players:
+            break
+        if category == "medical_actions":
+            value_for = lambda player: sum(
+                stat(player, "medical", action) for action in medical_actions
+            )
+        else:
+            value_for = lambda player: stat(player, category, key)
+        winner = max(players, key=value_for)
+        value = value_for(winner)
+        below_minimum = value <= minimum if strict_minimum else value < minimum
+        if below_minimum:
+            continue
+        display_value = int(value) if value.is_integer() else round(value, 2)
+        medal_data[medal_name] = {
+            "medal": medal_name,
+            "name": winner["name"],
+            "value": str(display_value),
+            "description": f"With {display_value:g} {description}",
+            "image_path": image_path,
+        }
 
     return medal_data
 
 
-def create_image_summary():
+def create_image_summary(file_path=None, output_path=None):
     # Load the debriefing template image
-    img = Image.open("resources/templates/debriefing_template_medals.png").convert("RGBA")
+    img = Image.open(resource_path("resources/templates/debriefing_template_medals.png")).convert("RGBA")
     img_draw = ImageDraw.Draw(img)
 
     # Setup fonts
-    medium_title_font = ImageFont.truetype("resources/fonts/Purista-Medium.ttf", 16)
-    medium_body_font = ImageFont.truetype("resources/fonts/Purista-Medium.ttf", 13)
-    small_body_font = ImageFont.truetype("resources/fonts/Purista-Medium.ttf", 10)
-    header_number_font = ImageFont.truetype("resources/fonts/Purista-Bold.ttf", 18)
-    mission_name_font = ImageFont.truetype("resources/fonts/Purista-Bold.ttf", 13)
+    medium_title_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Medium.ttf"), 16)
+    medium_body_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Medium.ttf"), 13)
+    small_body_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Medium.ttf"), 10)
+    header_number_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Bold.ttf"), 18)
+    mission_name_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Bold.ttf"), 13)
 
     # Setup the mission name at the top
-    mission_name = get_mission_name()
+    mission_name = get_mission_name(file_path)
     mission_name_beautify = beautify_mission_name(mission_name)
     img_draw.text((img.width // 2, 102), mission_name_beautify.upper(), fill=(255, 255, 255), font=mission_name_font, anchor="mm")
 
@@ -158,10 +283,11 @@ def create_image_summary():
     #####################################
 
     # Get the total kills and civilian casualties
-    kill_data = get_kill_data()
+    kill_data = get_kill_data(file_path)
+    kill_data = dict(sorted(kill_data.items(), key=lambda item: item[1]["score"], reverse=True))
     total_kills = sum(player["killsInfantry"] for player in kill_data.values())
     total_deaths = sum(player["deaths"] for player in kill_data.values())
-    civilian_casualties = 0  # Placeholder for civilian casualties
+    civilian_casualties = sum(player["killsCivilian"] for player in kill_data.values())
 
     # Draw the total kills, deaths, and civilian casualties at the top of the image
     img_kills = Image.new('RGBA', img.size, (255, 255, 255, 0))
@@ -201,11 +327,20 @@ def create_image_summary():
     #####################################
 
     # Custom medals
-    medal_data = get_medal_data()
+    medal_data = get_medal_data(file_path)
+    card_height = 72
+    row_step = card_height + 4
+    template_rows = 5
+    rows_per_column = max(template_rows, (len(medal_data) + 1) // 2)
+    if rows_per_column > template_rows:
+        extra_height = (rows_per_column - template_rows) * row_step
+        canvas = Image.new("RGBA", (img.width, img.height + extra_height), (10, 10, 10, 255))
+        canvas.paste(img, (0, 0))
+        img = canvas
     img_medals = Image.new('RGBA', img.size, (0, 0, 0, 0))
     img_medals_draw = ImageDraw.Draw(img_medals)
 
-    def draw_medal_container(image, medal=None, position=(0, 0), size=(178, 72)):
+    def draw_medal_container(image, medal=None, position=(0, 0), size=(178, card_height)):
         draw_blurred_rectangle(image, (position[0], position[1], position[0] + size[0], position[1] + size[1]), fill=(0, 0, 0, 170), outline=(0, 0, 0, 40), outline_width=1, blur_radius=0.6)
         draw_blurred_rectangle(image, (position[0] + 6, position[1] + 6, position[0] + size[0] - 6, position[1] + size[1] - 6), fill=(121, 121, 121, 28), outline=(0, 0, 0, 60), outline_width=1, blur_radius=0.6)
         if medal is not None:
@@ -220,23 +355,27 @@ def create_image_summary():
             img_medals_draw.text((position[0] + (size[0] // 2), position[1] + (size[1] // 2) + 4), str(medal["name"]), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
             img_medals_draw.text((position[0] + (size[0] // 2), position[1] + (size[1] // 2) + 18), str(medal["description"]), fill=(255, 255, 255, 100), font=small_body_font, anchor="mm")
 
-    for medal in medal_data:
-        mdata = medal_data[medal]
-        index = list(medal_data.keys()).index(medal)
-        if index < 4:
-            draw_medal_container(img_medals, medal=mdata, position=(7, 113 + (index * (72 + 4))))
-        elif index < 8:
-            draw_medal_container(img_medals, medal=mdata, position=(775, 113 + ((index-4) * (72 + 4))))
-        else:
-            pass
+    for index, medal in enumerate(medal_data.values()):
+        column, row = divmod(index, rows_per_column)
+        draw_medal_container(img_medals, medal=medal, position=((7, 775)[column], 113 + row * row_step))
 
     # Composite the kills and medals onto the main image
     img = Image.alpha_composite(img, img_medals)
 
     ##############################
 
-    #Save and show the image
-    img.save(f'output/{mission_name}.png')
-    img.show()
+    if output_path is None:
+        output_dir = os.path.join(SCRIPT_DIR, "output")
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, f"{mission_name}.png")
+    img.save(output_path)
+    print(output_path)
+    return output_path
 
-create_image_summary()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate an Arma debriefing leaderboard image")
+    parser.add_argument("--input", dest="input_path", help="TAW JSON or legacy debriefing log")
+    parser.add_argument("--output", dest="output_path", help="PNG output path")
+    args = parser.parse_args()
+    create_image_summary(args.input_path, args.output_path)
