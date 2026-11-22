@@ -6,6 +6,20 @@ import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+KILL_SCORE_WEIGHTS = {
+    "killsInfantry": 1,
+    "killsSoft": 2,
+    "killsArmor": 4,
+    "killsAir": 6,
+    "killsDrones": 2,
+}
+MAX_DEBRIEF_MEDALS = 10
+
+
+def calculate_score(player):
+    return sum(player[key] * weight for key, weight in KILL_SCORE_WEIGHTS.items())
+
+
 def resource_path(relative_path):
     return os.path.join(SCRIPT_DIR, relative_path)
 
@@ -31,14 +45,23 @@ def beautify_mission_name(raw_name):
     words = raw_name.split('_')
     return ' '.join(word.capitalize() for word in words)
 
+
 def get_mission_name(file_path=None):
     data = None
     if file_path is not None:
-        source_path = file_path
         if file_path.lower().endswith(".json"):
+            with open(file_path, "r", encoding="utf-8-sig") as f:
+                mission_data = json.load(f)
+            mission_metadata = mission_data.get("_mission") or {}
+            mission_name = mission_metadata.get("briefingName") or mission_metadata.get("missionName")
+            if mission_name:
+                print(f"Mission name found: {mission_name} -> {beautify_mission_name(mission_name)}")
+                return mission_name
+
             log_path = os.path.splitext(file_path)[0] + ".log"
-            if os.path.exists(log_path):
-                source_path = log_path
+            source_path = log_path if os.path.exists(log_path) else file_path
+        else:
+            source_path = file_path
         if source_path.lower().endswith(".log"):
             with open(source_path, "r", encoding="utf-8", errors="replace") as f:
                 data = f.read()
@@ -83,16 +106,19 @@ def get_json_kill_data(file_path):
         soft = int(combat.get("killsSoft", 0) or 0)
         armor = int(combat.get("killsArmored", 0) or 0)
         air = int(combat.get("killsAir", 0) or 0)
-        kill_data[name] = {
+        drones = int(combat.get("killsDrones", 0) or 0)
+        player_data = {
             "name": name,
             "killsInfantry": infantry,
             "killsSoft": soft,
             "killsArmor": armor,
             "killsAir": air,
+            "killsDrones": drones,
             "killsCivilian": int(combat.get("killsCivilian", 0) or 0),
-            "score": infantry + soft + armor + air,
             "deaths": int(combat.get("deaths", 0) or 0)
         }
+        player_data["score"] = calculate_score(player_data)
+        kill_data[name] = player_data
 
     return kill_data
 
@@ -125,8 +151,8 @@ def get_kill_data(file_path=None):
         kills_soft = re.search(r'killsSoft\s*=\s*(\d+);', player_data)
         kills_armored = re.search(r'killsArmor\s*=\s*(\d+);', player_data)
         kills_air = re.search(r'killsAir\s*=\s*(\d+);', player_data)
+        kills_drones = re.search(r'killsDrones\s*=\s*(\d+);', player_data)
         kills_civilian = re.search(r'killsCivilian\s*=\s*(\d+);', player_data)
-        total_score = re.search(r'killsTotal\s*=\s*(\d+);', player_data)
         total_deaths = re.search(r'killed\s*=\s*(\d+);', player_data)
 
         # Print and log the kill counts to a json file for each player
@@ -142,10 +168,11 @@ def get_kill_data(file_path=None):
             "killsSoft": int(kills_soft.group(1)) if kills_soft else 0,
             "killsArmor": int(kills_armored.group(1)) if kills_armored else 0,
             "killsAir": int(kills_air.group(1)) if kills_air else 0,
+            "killsDrones": int(kills_drones.group(1)) if kills_drones else 0,
             "killsCivilian": int(kills_civilian.group(1)) if kills_civilian else 0,
-            "score": int(total_score.group(1)) if total_score else 0,
             "deaths": int(total_deaths.group(1)) if total_deaths else 0
         }
+        player_data["score"] = calculate_score(player_data)
 
         #Skip headless clients
         if "headlessclient" in name.group(1):
@@ -233,7 +260,7 @@ def get_medal_data(file_path=None):
     medal_data = {}
     image_path = resource_path("resources/medals/medal_generic.png")
     for medal_name, category, key, description, minimum, strict_minimum in awards:
-        if not players:
+        if not players or len(medal_data) >= MAX_DEBRIEF_MEDALS:
             break
         if category == "medical_actions":
             value_for = lambda player: sum(
@@ -285,7 +312,9 @@ def create_image_summary(file_path=None, output_path=None):
     # Get the total kills and civilian casualties
     kill_data = get_kill_data(file_path)
     kill_data = dict(sorted(kill_data.items(), key=lambda item: item[1]["score"], reverse=True))
-    total_kills = sum(player["killsInfantry"] for player in kill_data.values())
+    total_kills = sum(
+        player[key] for player in kill_data.values() for key in KILL_SCORE_WEIGHTS
+    )
     total_deaths = sum(player["deaths"] for player in kill_data.values())
     civilian_casualties = sum(player["killsCivilian"] for player in kill_data.values())
 
@@ -298,28 +327,28 @@ def create_image_summary(file_path=None, output_path=None):
 
     # Player stats header
     player_spacing = 62
+    player_stat_x = 420
     img_kills_draw.text((207, 170), "Name", fill=(255, 255, 255), font=medium_title_font, anchor="lm")
-    img_kills_draw.text((420 + (player_spacing * 0), 170), "Infantry", fill=(255, 255, 255), font=medium_title_font, anchor="mm")
-    img_kills_draw.text((420 + (player_spacing * 1), 170), "Light", fill=(255, 255, 255), font=medium_title_font, anchor="mm")
-    img_kills_draw.text((420 + (player_spacing * 2), 170), "Armored", fill=(255, 255, 255), font=medium_title_font, anchor="mm")
-    img_kills_draw.text((420 + (player_spacing * 3), 170), "Air", fill=(255, 255, 255), font=medium_title_font, anchor="mm")
-    img_kills_draw.text((420 + (player_spacing * 4), 170), "Score", fill=(255, 255, 255), font=medium_title_font, anchor="mm")
-    img_kills_draw.text((420 + (player_spacing * 5), 170), "Deaths", fill=(255, 255, 255), font=medium_title_font, anchor="mm")
+    leaderboard_titles = ("Infantry", "Light", "Armor", "Air", "Drones", "Deaths")
+    for index, title in enumerate(leaderboard_titles):
+        img_kills_draw.text((player_stat_x + (player_spacing * index), 170), title, fill=(255, 255, 255), font=medium_title_font, anchor="mm")
 
     # List each player's stats
-    for player in kill_data:
-        pdata = kill_data[player]
-        index = list(kill_data.keys()).index(player)
+    for index, pdata in enumerate(kill_data.values()):
         if index >= 10:
             break
         y_position = 193 + index * 20
+        values = (
+            pdata["killsInfantry"],
+            pdata["killsSoft"],
+            pdata["killsArmor"],
+            pdata["killsAir"],
+            pdata["killsDrones"],
+            pdata["deaths"],
+        )
         img_kills_draw.text((207, y_position), pdata["name"], fill=(255, 255, 255), font=medium_body_font, anchor="lm")
-        img_kills_draw.text((420 + (player_spacing * 0), y_position), str(pdata["killsInfantry"]), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
-        img_kills_draw.text((420 + (player_spacing * 1), y_position), str(pdata["killsSoft"]), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
-        img_kills_draw.text((420 + (player_spacing * 2), y_position), str(pdata["killsArmor"]), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
-        img_kills_draw.text((420 + (player_spacing * 3), y_position), str(pdata["killsAir"]), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
-        img_kills_draw.text((420 + (player_spacing * 4), y_position), str(pdata["score"]), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
-        img_kills_draw.text((420 + (player_spacing * 5), y_position), str(pdata["deaths"]), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
+        for column, value in enumerate(values):
+            img_kills_draw.text((player_stat_x + (player_spacing * column), y_position), str(value), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
 
     # Composite the kills and medals onto the main image
     img = Image.alpha_composite(img, img_kills)
@@ -378,4 +407,16 @@ if __name__ == "__main__":
     parser.add_argument("--input", dest="input_path", help="TAW JSON or legacy debriefing log")
     parser.add_argument("--output", dest="output_path", help="PNG output path")
     args = parser.parse_args()
-    create_image_summary(args.input_path, args.output_path)
+
+    input_path = args.input_path
+    if input_path is None:
+        input_dir = os.path.join(SCRIPT_DIR, "input")
+        json_file = next(
+            (name for name in sorted(os.listdir(input_dir)) if name.lower().endswith(".json")),
+            None,
+        )
+        if json_file is None:
+            parser.error(f"No JSON files found in {input_dir}")
+        input_path = os.path.join(input_dir, json_file)
+
+    create_image_summary(input_path, args.output_path)
