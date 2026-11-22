@@ -14,6 +14,15 @@ KILL_SCORE_WEIGHTS = {
     "killsDrones": 2,
 }
 MAX_DEBRIEF_MEDALS = 10
+SQUAD_COLORS = {
+    "alpha": (102, 0, 128, 150),
+    "bravo": (0, 254, 254, 150),
+    "charlie": (0, 204, 0, 150),
+    "delta": (0, 0, 255, 150),
+    "platoon": (151, 151, 151, 150),
+    "support": (255, 255, 0, 150),
+    "recon": (246, 133, 176, 150),
+}
 
 
 def calculate_score(player):
@@ -22,6 +31,29 @@ def calculate_score(player):
 
 def resource_path(relative_path):
     return os.path.join(SCRIPT_DIR, relative_path)
+
+def truncate_text(text, font, max_width):
+    if font.getlength(text) <= max_width:
+        return text
+    suffix = "..."
+    while text and font.getlength(text + suffix) > max_width:
+        text = text[:-1]
+    return f"{text.rstrip()}{suffix}" if text else ""
+
+def display_player_name(name):
+    name = str(name).strip()
+    cleaned = re.sub(r"(?:\s*\[[^\[\]]+\])+\s*$", "", name).strip()
+    cleaned = re.sub(r"(?<=\S)\s*\[AM(?:\s*\d[\w\s-]*)?\]", "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip() or name
+
+def get_squad_display(group_name):
+    squad_name = str(group_name or "").strip()
+    if "platoon" in squad_name.casefold():
+        return "Platoon", SQUAD_COLORS["platoon"]
+    squad_color = SQUAD_COLORS.get(squad_name.casefold())
+    if squad_color is None:
+        return "Support", SQUAD_COLORS["support"]
+    return squad_name, squad_color
 
 def draw_blurred_rectangle(base_img, xy, fill, outline, outline_width=2, blur_radius: float = 2):
     # Create a transparent layer
@@ -40,6 +72,18 @@ def draw_blurred_rectangle(base_img, xy, fill, outline, outline_width=2, blur_ra
 
     # Composite onto base image
     base_img.alpha_composite(temp)
+
+def draw_card_background(image, bounds, inset=6):
+    left, top, right, bottom = bounds
+    draw_blurred_rectangle(
+        image, bounds, fill=(0, 0, 0, 170), outline=(0, 0, 0, 40),
+        outline_width=1, blur_radius=0.6,
+    )
+    draw_blurred_rectangle(
+        image, (left + inset, top + inset, right - inset, bottom - inset),
+        fill=(121, 121, 121, 28), outline=(0, 0, 0, 60),
+        outline_width=1, blur_radius=0.6,
+    )
 
 def beautify_mission_name(raw_name):
     words = raw_name.split('_')
@@ -109,6 +153,7 @@ def get_json_kill_data(file_path):
         drones = int(combat.get("killsDrones", 0) or 0)
         player_data = {
             "name": name,
+            "groupName": str(meta.get("groupName") or "").strip(),
             "killsInfantry": infantry,
             "killsSoft": soft,
             "killsArmor": armor,
@@ -216,8 +261,10 @@ def get_medal_data(file_path=None):
             continue
         players.append({
             "name": name,
+            "groupName": str(meta.get("groupName") or "").strip(),
             "combat": player.get("combat") or {},
             "medical": player.get("medical") or {},
+            "other": player.get("other") or {},
         })
 
     def stat(player, category, key):
@@ -239,63 +286,80 @@ def get_medal_data(file_path=None):
         "medicalTourniquetsApplied",
     )
     awards = (
-        ("Blood Bank", "medical", "medicalBloodApplied", "ml of blood given", 1000, False),
-        ("Pincushion", "medical", "medicalInjectionsRecieved", "injections received", 3, False),
-        ("Longest Nap", "medical", "unconsciousTime", "seconds unconscious", 240, False),
-        ("Frequent Flyer", "medical", "unconsciousCount", "times unconscious", 2, False),
-        ("Mummy Impression", "medical", "medicalBandagesRecieved", "bandages received", 30, False),
-        ("Trauma Queen/King", "medical_actions", None, "medical actions", 20, False),
-        ("Long Shot", "combat", "killsLongest", "meters for longest kill", 300, True),
-        ("Drone Hunter", "combat", "killsDrones", "drone kills", 3, False),
-        ("Tank Buster", "combat", "killsArmored", "armored kills", 3, False),
-        ("Bullet Magnet", "medical", "woundsReceived", "wounds received", 10, True),
-        ("Death Wish", "combat", "deaths", "deaths", 2, True),
-        ("Vampire", "medical", "medicalBloodDrawnApplied", "ml of blood drawn", 500, True),
-        ("Sharpshooter", "combat", "hitHeadshots", "headshots", 5, True),
-        ("Trigger Happy", "combat", "firedCount", "shots fired", 100, True),
-        ("War Criminal", "combat", "killsCivilian", "civilian kills", 0, True),
-        ("Human Colander", "medical", "totalBloodLoss", "ml of blood lost", 2000, True),
+        ("Blood Bank", "medical", "medicalBloodApplied", "ml of blood given", 8000),
+        ("Pincushion", "medical", "medicalInjectionsRecieved", "injections received", 15),
+        ("Longest Nap", "medical", "unconsciousTime", "seconds unconscious", 240),
+        ("Frequent Flyer", "medical", "unconsciousCount", "times unconscious", 5),
+        ("Mummy Impression", "medical", "medicalBandagesRecieved", "bandages received", 30),
+        ("Trauma Queen/King", "medical_actions", None, "medical actions", 50),
+        ("Long Shot", "combat", "killsLongest", "meters for longest kill", 300),
+        ("Drone Hunter", "combat", "killsDrones", "drone kills", 3),
+        ("Tank Buster", "combat", "killsArmored", "armored kills", 3),
+        ("Bullet Magnet", "medical", "woundsReceived", "wounds received", 30),
+        ("Death Wish", "combat", "deaths", "deaths", 3),
+        ("Vampire", "medical", "medicalBloodDrawnApplied", "ml of blood drawn", 1000),
+        ("Sharpshooter", "combat", "hitHeadshots", "headshots", 20),
+        ("Trigger Happy", "combat", "firedCount", "shots fired", 500),
+        ("War Criminal", "combat", "killsCivilian", "civilian kills", 1),
+        ("Human Colander", "medical", "totalBloodLoss", "ml of blood lost", 8000),
+        ("Bomb Disposal", "combat", "explosivesDefused", "explosives defused", 3),
+        ("Demolition", "combat", "explosivesPlaced", "explosives placed", 3),
+        ("Bob The Builder", "other", "fortificationsBuilt", "fortifications built", 6),
+        ("Grenadier", "combat", "grenadesThrown", "grenades thrown", 5),
     )
 
-    medal_data = {}
+    candidates = []
     image_path = resource_path("resources/medals/medal_generic.png")
-    for medal_name, category, key, description, minimum, strict_minimum in awards:
-        if not players or len(medal_data) >= MAX_DEBRIEF_MEDALS:
+    for medal_name, category, key, description, minimum in awards:
+        if not players:
             break
+        eligible_players = players
+        if medal_name == "Long Shot":
+            eligible_players = [
+                player for player in players
+                if not player["groupName"]
+                or get_squad_display(player["groupName"])[0].casefold() != "support"
+            ]
+        if not eligible_players:
+            continue
         if category == "medical_actions":
             value_for = lambda player: sum(
                 stat(player, "medical", action) for action in medical_actions
             )
         else:
             value_for = lambda player: stat(player, category, key)
-        winner = max(players, key=value_for)
+        winner = max(eligible_players, key=value_for)
         value = value_for(winner)
-        below_minimum = value <= minimum if strict_minimum else value < minimum
-        if below_minimum:
+        if value < minimum:
             continue
         display_value = int(value) if value.is_integer() else round(value, 2)
-        medal_data[medal_name] = {
+        medal = {
             "medal": medal_name,
             "name": winner["name"],
             "value": str(display_value),
             "description": f"With {display_value:g} {description}",
             "image_path": image_path,
         }
+        candidates.append((value / minimum, medal_name, medal))
 
-    return medal_data
+    candidates.sort(key=lambda candidate: candidate[0], reverse=True)
+    return {
+        name: medal for _, name, medal in candidates[:MAX_DEBRIEF_MEDALS]
+    }
 
 
 def create_image_summary(file_path=None, output_path=None):
-    # Load the debriefing template image
     img = Image.open(resource_path("resources/templates/debriefing_template_medals.png")).convert("RGBA")
-    img_draw = ImageDraw.Draw(img)
 
     # Setup fonts
     medium_title_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Medium.ttf"), 16)
     medium_body_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Medium.ttf"), 13)
     small_body_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Medium.ttf"), 10)
+    squad_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Medium.ttf"), 12)
     header_number_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Bold.ttf"), 18)
     mission_name_font = ImageFont.truetype(resource_path("resources/fonts/Purista-Bold.ttf"), 13)
+
+    img_draw = ImageDraw.Draw(img)
 
     # Setup the mission name at the top
     mission_name = get_mission_name(file_path)
@@ -328,14 +392,18 @@ def create_image_summary(file_path=None, output_path=None):
     # Player stats header
     player_spacing = 62
     player_stat_x = 420
-    img_kills_draw.text((207, 170), "Name", fill=(255, 255, 255), font=medium_title_font, anchor="lm")
+    squad_name_x = 207
+    player_name_x = 270
+    player_name_width = 140
+    squad_name_width = 57
+    img_kills_draw.text((player_name_x, 170), "Name", fill=(255, 255, 255), font=medium_title_font, anchor="lm")
     leaderboard_titles = ("Infantry", "Light", "Armor", "Air", "Drones", "Deaths")
     for index, title in enumerate(leaderboard_titles):
         img_kills_draw.text((player_stat_x + (player_spacing * index), 170), title, fill=(255, 255, 255), font=medium_title_font, anchor="mm")
 
     # List each player's stats
     for index, pdata in enumerate(kill_data.values()):
-        if index >= 10:
+        if index >= 14:
             break
         y_position = 193 + index * 20
         values = (
@@ -346,7 +414,27 @@ def create_image_summary(file_path=None, output_path=None):
             pdata["killsDrones"],
             pdata["deaths"],
         )
-        img_kills_draw.text((207, y_position), pdata["name"], fill=(255, 255, 255), font=medium_body_font, anchor="lm")
+        player_name = truncate_text(display_player_name(pdata["name"]), medium_body_font, player_name_width)
+        img_kills_draw.text((player_name_x, y_position), player_name, fill=(255, 255, 255), font=medium_body_font, anchor="lm")
+        if pdata.get("groupName"):
+            squad_name, squad_color = get_squad_display(pdata["groupName"])
+            squad_label = truncate_text(squad_name, squad_font, squad_name_width - 12)
+            badge_right = squad_name_x + 10 + int(squad_font.getlength(squad_label)) + 2
+            img_kills_draw.rectangle(
+                (squad_name_x, y_position - 8, badge_right, y_position + 8),
+                fill=(0, 0, 0, 170),
+            )
+            img_kills_draw.rectangle(
+                (squad_name_x + 2, y_position - 5, squad_name_x + 5, y_position + 5),
+                fill=squad_color,
+            )
+            img_kills_draw.text(
+                (squad_name_x + 9, y_position),
+                squad_label,
+                fill=(245, 245, 245, 255),
+                font=squad_font,
+                anchor="lm",
+            )
         for column, value in enumerate(values):
             img_kills_draw.text((player_stat_x + (player_spacing * column), y_position), str(value), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
 
@@ -370,8 +458,7 @@ def create_image_summary(file_path=None, output_path=None):
     img_medals_draw = ImageDraw.Draw(img_medals)
 
     def draw_medal_container(image, medal=None, position=(0, 0), size=(178, card_height)):
-        draw_blurred_rectangle(image, (position[0], position[1], position[0] + size[0], position[1] + size[1]), fill=(0, 0, 0, 170), outline=(0, 0, 0, 40), outline_width=1, blur_radius=0.6)
-        draw_blurred_rectangle(image, (position[0] + 6, position[1] + 6, position[0] + size[0] - 6, position[1] + size[1] - 6), fill=(121, 121, 121, 28), outline=(0, 0, 0, 60), outline_width=1, blur_radius=0.6)
+        draw_card_background(image, (position[0], position[1], position[0] + size[0], position[1] + size[1]))
         if medal is not None:
             #Draw transparent medal image
             try:
@@ -381,7 +468,7 @@ def create_image_summary(file_path=None, output_path=None):
                 print(f"Error loading medal image: {e}")
             #Draw medal information
             img_medals_draw.text((position[0] + (size[0] // 2), position[1] + (size[1] // 2) - 14), str(medal["medal"]), fill=(255, 255, 255), font=header_number_font, anchor="mm")
-            img_medals_draw.text((position[0] + (size[0] // 2), position[1] + (size[1] // 2) + 4), str(medal["name"]), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
+            img_medals_draw.text((position[0] + (size[0] // 2), position[1] + (size[1] // 2) + 4), display_player_name(medal["name"]), fill=(255, 255, 255), font=medium_body_font, anchor="mm")
             img_medals_draw.text((position[0] + (size[0] // 2), position[1] + (size[1] // 2) + 18), str(medal["description"]), fill=(255, 255, 255, 100), font=small_body_font, anchor="mm")
 
     for index, medal in enumerate(medal_data.values()):
